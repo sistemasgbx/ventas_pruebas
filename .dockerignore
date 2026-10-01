@@ -1,0 +1,19 @@
+.git/
+.venv/
+.venv-*/
+__pycache__/
+.cert/
+*.pem
+*.key
+.env
+.env.*
+*.db
+*.sqlite
+*.sqlite3
+*.xlsx
+*.zip
+cont.jpeg
+gru.jpeg
+grubo.png
+grubox1 (2).jpeg
+image.png

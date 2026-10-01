@@ -1,0 +1,24 @@
+.venv/
+.venv-*/
+__pycache__/
+*.py[cod]
+.cert/
+*.pem
+*.key
+.env
+.env.*
+!.env.example
+grubox.db
+grubox.db-*
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+*.xlsx
+*.zip
+iniciar_crm.bat
+cont.jpeg
+gru.jpeg
+grubo.png
+grubox1 (2).jpeg
+image.png
