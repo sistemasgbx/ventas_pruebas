@@ -33,22 +33,19 @@ La base se crea automaticamente en `grubox.db` al iniciar por primera vez.
 
 Cambia estas contrasenas antes de usar el sistema con datos reales. Desde `Mi cuenta` cada usuario puede cambiar su propia contraseña. El administrador puede crear vendedores y restablecer sus contraseñas desde `Usuarios`.
 
-## Despliegue en Railway
+## Despliegue en Render
 
-La app ya acepta PostgreSQL en `DATABASE_URL`, el `PORT` inyectado por Railway y el HTTPS administrado por su dominio público. SQLite sigue disponible para desarrollo local. Railway IaC actual permite declarar web y Postgres, pero el Cron se configura aparte desde el panel; `railway.json` ya está deprecado, por eso estos pasos usan el panel vigente.
+El archivo `render.yaml` configura la app, PostgreSQL privado y un job diario de respaldo S3. Render proporciona HTTPS y define `PORT`; SQLite se conserva únicamente para desarrollo local. Se puede usar el espacio Hobby (USD 0) con cómputo pagado, sin contratar el espacio Pro de USD 25 si no necesitas sus funciones de equipo.
 
-1. Crea un repositorio privado en GitHub. Antes de subirlo, confirma que `grubox.db`, `.cert/`, llaves, `.env`, entornos virtuales y archivos Excel no aparezcan en `git status`; `.gitignore` no elimina archivos ya versionados.
-2. En Railway crea un proyecto y despliega el repositorio como servicio `grubox-crm`. Configura el comando de inicio `python server.py`, health check `/healthz` y genera el dominio HTTPS desde **Settings > Networking**.
-3. Añade un servicio PostgreSQL al mismo proyecto y región. En las variables de `grubox-crm`, referencia la URL privada como `DATABASE_URL=${{Postgres.DATABASE_URL}}` (usa el nombre exacto de tu servicio Postgres), y define `APP_ENV=production`, `APP_TIMEZONE=America/Mexico_City`, `BOOTSTRAP_ADMIN_USERNAME` y una contraseña única de al menos 16 caracteres.
-4. Despliega una vez. La base nueva crea solo el administrador configurado, sin vendedores o prospectos demo. Entra por el dominio HTTPS y crea los vendedores en **Usuarios**.
-5. Para respaldos externos, crea un bucket S3 privado, con cifrado y una regla de ciclo de vida, por ejemplo 30 días. Añade otro servicio desde el mismo repositorio; configura **Dockerfile path** como `Dockerfile.backup`, su **Cron Schedule** como `0 9 * * *` (09:00 UTC) y las variables `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `AWS_REGION`, `S3_BUCKET_NAME`, `BACKUP_PREFIX=grubox`, `AWS_ACCESS_KEY_ID` y `AWS_SECRET_ACCESS_KEY`. Usa credenciales IAM restringidas al prefijo de backup, con lectura y escritura.
-6. Ejecuta el servicio de respaldo y comprueba sus logs. Cada ejecución genera un dump, lo sube a S3, vuelve a descargarlo y lo restaura en un PostgreSQL temporal antes de reportar éxito.
+1. En GitHub confirma que `grubox.db`, `.cert/`, llaves, `.env`, entornos virtuales y Excel estén ignorados. El repositorio ya debe tener al menos un commit publicado.
+2. En Render selecciona **New > Blueprint**, conecta el repositorio y aplica `render.yaml`. El servicio usa Ohio y la base no acepta conexiones públicas.
+3. Render solicitará `BOOTSTRAP_ADMIN_USERNAME` y `BOOTSTRAP_ADMIN_PASSWORD`. Usa un nombre y una contraseña única de al menos 16 caracteres; no uses `admin123` ni `ana123`.
+4. Crea un bucket S3 privado en `us-east-2` (Ohio), con cifrado, versionado y ciclo de vida de 30 días. Limita la llave IAM a lectura/escritura del prefijo `grubox/`. Al sincronizar el Blueprint, Render pedirá `S3_BUCKET_NAME`, `AWS_ACCESS_KEY_ID` y `AWS_SECRET_ACCESS_KEY`.
+5. Abre el dominio HTTPS de Render, inicia sesión y crea las cuentas de vendedores desde **Usuarios**. Configura notificaciones de fallos por correo o Slack en **Integrations > Notifications**.
 
-Para conservar los datos locales, cambia primero las contraseñas demo de `admin` y `ana`, crea una copia de `grubox.db` y despliega PostgreSQL vacío. Usa temporalmente `DATABASE_URL` con la conexión pública/TCP Proxy de Railway y `BOOTSTRAP_ADMIN_USERNAME` desde una terminal segura para ejecutar `python migrate_sqlite_to_postgres.py`, revisar conteos y luego `python migrate_sqlite_to_postgres.py --execute`. El importador se niega a usar un destino con actividad, conserva IDs e historiales y no modifica SQLite. Después quita el acceso público a la base y vuelve a usar la referencia privada del servicio.
+La nube inicia vacía con solo el administrador; no copia automáticamente `grubox.db`. Para conservar datos: cambia primero las contraseñas demo en el CRM local y crea una copia del archivo. Despliega PostgreSQL vacío, detén el servicio web y agrega temporalmente tu IP a la lista de acceso de la base. Usa la URL externa TLS como `DATABASE_URL` y define `BOOTSTRAP_ADMIN_USERNAME` en una terminal segura; ejecuta `python migrate_sqlite_to_postgres.py` para revisar los conteos y después `python migrate_sqlite_to_postgres.py --execute`. La herramienta no modifica SQLite y se detiene si la base destino ya tiene actividad. Quita tu IP de acceso externo y reinicia el servicio al terminar.
 
-Railway Hobby cuesta USD 5/mes e incluye USD 5 de uso de recursos; app y PostgreSQL encendidos pueden exceder ese crédito y el resto se cobra por consumo. Almacenamiento de volúmenes cuesta USD 0.15/GB-mes; salida de red, USD 0.05/GB. S3 se factura aparte. Revisa el uso y configura alertas de gasto en Railway.
-
-El health check `/healthz` verifica la base durante el despliegue; Railway no lo consulta continuamente tras publicar. Configura monitoreo externo de disponibilidad o revisa métricas y logs en Railway. El PostgreSQL de Railway puede tener respaldos programados de su volumen desde **Backups**; la copia S3 agrega una recuperación fuera del proyecto Railway.
+El costo base estimado en el espacio Hobby es **USD 13/mes**: web 512 MB USD 7 + PostgreSQL 256 MB USD 6. Se añaden S3, impuestos y consumo adicional. Render Pro suma USD 25/mes al costo de cómputo; no es necesario solo por tener vendedores con cuentas dentro del CRM.
 
 El CRM almacena datos de contacto y ubicación de vendedores. Antes de usarlo con datos reales, define aviso de privacidad, roles de acceso, periodo de conservación y responsables de restauración.
 
@@ -58,14 +55,15 @@ El CRM almacena datos de contacto y ubicación de vendedores. Antes de usarlo co
 - Hay índices B-tree para propietario, etapa, fecha de seguimiento, correo y teléfonos; PostgreSQL agrega índices trigram para búsqueda parcial de empresa, contacto y datos de contacto. SQLAlchemy mantiene un pool local de conexiones por proceso.
 - Actualmente el CRM no sube adjuntos. Si se agregan fichas, planos o muestras, guárdalos en almacenamiento de objetos privado (S3), y en PostgreSQL conserva solo clave, tipo, tamaño y fecha; entrégalos con URLs firmadas y vencimiento corto.
 - El cron se ejecuta diariamente a las 09:00 UTC (03:00 Ciudad de México). Genera el dump, lo sube cifrado, lo vuelve a descargar desde S3 y lo restaura en un PostgreSQL efímero aislado; verifica tablas clave antes de marcarse exitoso. Esto prueba el respaldo y su recuperación diaria sin tocar producción.
-- Railway permite configurar respaldos de volúmenes diarios (retención de 6 días), semanales (27 días) o mensuales (89 días); revisa el costo incremental. El dump diario a S3 es una segunda copia independiente.
+- PostgreSQL de Render ofrece recuperación a un punto en el tiempo: Hobby conserva 3 días y Pro o superior, 7. El dump diario a S3 es una segunda copia independiente.
 - Al menos trimestralmente restaura el dump más reciente en una base PostgreSQL aislada, confirma que abre con `psql`, consulta conteos de tablas y valida que un usuario pueda iniciar sesión. Nunca pruebes restauraciones sobre producción.
 
 ### Costos aproximados
 
-- **Railway Hobby**: USD 5/mes, incluye USD 5 de uso. Memoria: USD 10/GB-mes; CPU: USD 20/vCPU-mes; volumen: USD 0.15/GB-mes; egreso: USD 0.05/GB. El cargo total será el mayor entre la suscripción y el consumo, no un precio fijo por servicio. El cron y S3 añaden consumo.
+- **Render Hobby + cómputo**: USD 0 de espacio + servicio web de 512 MB USD 7/mes + PostgreSQL de 256 MB USD 6/mes = **USD 13/mes** antes de S3, impuestos y tráfico adicional.
+- **Render Pro + el mismo cómputo**: espacio Pro USD 25/mes + web USD 7 + PostgreSQL USD 6 = **USD 38/mes**. Pro aporta funciones para equipos; no agrega CPU/RAM automáticamente.
 
-Precios consultados el 1 de octubre de 2026 en [Railway](https://railway.com/pricing); pueden cambiar y el costo final depende del uso.
+Precios consultados el 1 de octubre de 2026 en [Render](https://render.com/pricing); pueden cambiar y el costo final depende del uso.
 
 ## Incluye
 
@@ -99,5 +97,6 @@ cd "C:\Users\rhgbx\OneDrive\Documents\Ventas"
 
 # detener servidor
 
-#   v e n t a s _ p r u e b a s  
+#   v e n t a s _ p r u e b a s 
+ 
  

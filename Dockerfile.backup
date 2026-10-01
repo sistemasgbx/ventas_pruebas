@@ -6,4 +6,4 @@ COPY backup_postgres_s3.sh /usr/local/bin/backup_postgres_s3.sh
 RUN chmod 0555 /usr/local/bin/backup_postgres_s3.sh
 
 USER postgres
-ENTRYPOINT ["/usr/local/bin/backup_postgres_s3.sh"]
+CMD ["/usr/local/bin/backup_postgres_s3.sh"]
