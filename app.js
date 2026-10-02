@@ -44,7 +44,18 @@ const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN
 async function api(path, options = {}) {
   // Centralizar fetch evita repetir la misma lectura de errores en cada botón.
   const response = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...options });
-  const payload = await response.json();
+  const responseText = await response.text();
+  let payload = {};
+  if (responseText) {
+    try {
+      payload = JSON.parse(responseText);
+    } catch {
+      throw new Error(`El servidor devolvió una respuesta no válida (HTTP ${response.status}). Revisa los Logs de Render.`);
+    }
+  }
+  if (!responseText && !response.ok) {
+    throw new Error(`El servidor no devolvió detalles del error (HTTP ${response.status}). Revisa los Logs de Render.`);
+  }
   if (!response.ok) throw new Error(payload.error || 'No se pudo completar la operación');
   return payload;
 }

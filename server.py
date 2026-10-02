@@ -678,8 +678,10 @@ class Handler(BaseHTTPRequestHandler):
                     FROM clients JOIN users ON users.id = clients.owner_id'''
                 rows = connection.execute(f'{query} {where} ORDER BY {order_by} LIMIT ? OFFSET ?', [*params, page_size, offset]).fetchall()
                 owners = connection.execute("SELECT id, name FROM users WHERE role = 'seller' AND active = 1 ORDER BY name").fetchall() if user['role'] == 'admin' else []
+            summary_data = dict(summary)
+            summary_data['forecast'] = float(summary_data['forecast'] or 0)
             return self.send_json({'clients': [dict(row) for row in rows], 'total': total, 'page': page,
-                'page_size': page_size, 'page_count': page_count, 'summary': dict(summary),
+                'page_size': page_size, 'page_count': page_count, 'summary': summary_data,
                 'followup_counts': dict(followup_counts),
                 'stage_summary': {row['stage']: {'count': row['count'], 'amount': row['amount']} for row in stage_rows},
                 'owners': [dict(row) for row in owners]})
