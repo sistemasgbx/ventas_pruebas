@@ -265,6 +265,10 @@ def initialize_database():
                 password_hash TEXT NOT NULL,
                 active INTEGER NOT NULL DEFAULT 1
             );
+            CREATE TABLE IF NOT EXISTS app_settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS clients (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 company TEXT NOT NULL,
@@ -315,7 +319,9 @@ def initialize_database():
                 product_measure TEXT,
                 probability INTEGER NOT NULL DEFAULT 0,
                 weighted_forecast REAL NOT NULL DEFAULT 0,
-                estimated_close_date TEXT
+                estimated_close_date TEXT,
+                capture_step INTEGER NOT NULL DEFAULT 3,
+                capture_complete INTEGER NOT NULL DEFAULT 1
             );
             CREATE TABLE IF NOT EXISTS client_history (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -457,6 +463,10 @@ def initialize_database():
                 connection.execute(f'ALTER TABLE clients ADD COLUMN {column} TEXT')
         for column, declaration in (('ink_count', 'INTEGER'), ('probability', 'INTEGER NOT NULL DEFAULT 0'),
                                     ('weighted_forecast', 'REAL NOT NULL DEFAULT 0'), ('target_price', 'REAL')):
+            if column not in client_columns:
+                connection.execute(f'ALTER TABLE clients ADD COLUMN {column} {declaration}')
+        for column, declaration in (('capture_step', 'INTEGER NOT NULL DEFAULT 3'),
+                                    ('capture_complete', 'INTEGER NOT NULL DEFAULT 1')):
             if column not in client_columns:
                 connection.execute(f'ALTER TABLE clients ADD COLUMN {column} {declaration}')
         if 'pieces_per_kg' not in client_columns:
@@ -891,6 +901,68 @@ class Handler(BaseHTTPRequestHandler):
                     JOIN users ON users.id = client_history.user_id
                     {where} ORDER BY client_history.id DESC LIMIT 200''', params).fetchall()
             return self.send_json({'movements': [dict(row) for row in rows]})
+        if path == '/api/admin/dashboard':
+            if user['role'] != 'admin':
+                return self.send_json({'error': 'No autorizado'}, 403)
+            requested_year = parse_qs(urlparse(self.path).query).get('year', [str(datetime.now(APP_TIMEZONE).year)])[0]
+            try:
+                year = int(requested_year)
+                if year < 2000 or year > 2100:
+                    raise ValueError
+            except ValueError:
+                return self.send_json({'error': 'El año solicitado no es válido'}, 400)
+            year_start = f'{year:04d}-01-01'
+            year_end = f'{year + 1:04d}-01-01'
+            with db() as connection:
+                goal_row = connection.execute('SELECT value FROM app_settings WHERE key = ?', (f'annual_goal_{year}',)).fetchone()
+                annual_goal = float(goal_row['value']) if goal_row else 0
+                month_rows = connection.execute('''SELECT substr(clients.estimated_close_date, 6, 2) AS month,
+                        SUM(CASE WHEN clients.probability >= 70 THEN clients.value ELSE 0 END) AS committed,
+                        SUM(CASE WHEN clients.probability >= 40 AND clients.probability < 70 THEN clients.value ELSE 0 END) AS probable,
+                        SUM(CASE WHEN clients.probability < 40 THEN clients.value ELSE 0 END) AS possible,
+                        SUM(clients.weighted_forecast) AS weighted_forecast
+                    FROM clients
+                    WHERE clients.stage IN ('new', 'negotiation', 'quoted')
+                        AND clients.estimated_close_date >= ? AND clients.estimated_close_date < ?
+                    GROUP BY substr(clients.estimated_close_date, 6, 2)''', (year_start, year_end)).fetchall()
+                actual = connection.execute('''WITH ranked_history AS (
+                        SELECT client_id, to_stage, created_at,
+                            ROW_NUMBER() OVER (PARTITION BY client_id ORDER BY created_at DESC, id DESC) AS rank
+                        FROM client_history
+                    )
+                    SELECT COALESCE(SUM(COALESCE(clients.won_value, clients.value)), 0) AS amount
+                    FROM ranked_history JOIN clients ON clients.id = ranked_history.client_id
+                    WHERE ranked_history.rank = 1 AND ranked_history.to_stage = 'won'
+                        AND ranked_history.created_at >= ? AND ranked_history.created_at < ?''',
+                    (year_start, year_end)).fetchone()['amount']
+                pipeline_total = connection.execute("SELECT COALESCE(SUM(value), 0) AS amount FROM clients WHERE stage IN ('new', 'negotiation', 'quoted')").fetchone()['amount']
+                annual_forecast = connection.execute('''SELECT COALESCE(SUM(weighted_forecast), 0) AS amount
+                    FROM clients WHERE stage IN ('new', 'negotiation', 'quoted')
+                        AND estimated_close_date >= ? AND estimated_close_date < ?''', (year_start, year_end)).fetchone()['amount']
+                new_clients = connection.execute('SELECT COUNT(*) AS count FROM clients WHERE created_at >= ? AND created_at < ?', (year_start, year_end)).fetchone()['count']
+                recovered_accounts = connection.execute('''SELECT COUNT(DISTINCT client_id) AS count FROM client_history
+                    WHERE from_stage = 'lost' AND to_stage IN ('new', 'negotiation', 'quoted', 'won')
+                        AND created_at >= ? AND created_at < ?''', (year_start, year_end)).fetchone()['count']
+            monthly_data = {int(row['month']): dict(row) for row in month_rows}
+            months = [{
+                'month': month,
+                'goal': annual_goal / 12,
+                'committed': float(monthly_data.get(month, {}).get('committed') or 0),
+                'probable': float(monthly_data.get(month, {}).get('probable') or 0),
+                'possible': float(monthly_data.get(month, {}).get('possible') or 0),
+                'weighted_forecast': float(monthly_data.get(month, {}).get('weighted_forecast') or 0)
+            } for month in range(1, 13)]
+            actual = float(actual or 0)
+            pipeline_total = float(pipeline_total or 0)
+            annual_forecast = float(annual_forecast or 0)
+            return self.send_json({
+                'year': year, 'annual_goal': annual_goal, 'weighted_forecast': annual_forecast,
+                'actual_sales': actual, 'compliance': actual / annual_goal * 100 if annual_goal else 0,
+                'gap': annual_goal - actual, 'pipeline_total': pipeline_total,
+                'pipeline_to_goal': pipeline_total / annual_goal * 100 if annual_goal else 0,
+                'recovered_accounts': int(recovered_accounts or 0), 'new_clients': int(new_clients or 0),
+                'months': months
+            })
         if path == '/api/admin/summary':
             if user['role'] != 'admin':
                 return self.send_json({'error': 'No autorizado'}, 403)
@@ -1080,12 +1152,36 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json({'ok': True})
         if path == '/api/clients':
             data = self.read_json()
-            required = ['company', 'contact', 'next_action', 'stage']
-            if any(not str(data.get(key, '')).strip() for key in required):
-                return self.send_json({'error': 'Completa todos los campos requeridos'}, 400)
+            try:
+                capture_complete = int(data.get('capture_complete', 1))
+                capture_step = int(data.get('capture_step', 3))
+                if capture_complete not in {0, 1} or capture_step not in {1, 2, 3} or capture_complete and capture_step != 3:
+                    raise ValueError
+                capture_complete = bool(capture_complete)
+            except (TypeError, ValueError):
+                return self.send_json({'error': 'El avance del formulario no es válido'}, 400)
+            incomplete_defaults = {'company': 'Oportunidad en captura', 'contact': 'Por definir', 'next_action': 'Continuar captura'}
+            if capture_complete and any(
+                not str(data.get(key, '')).strip() or str(data.get(key, '')).strip() == incomplete_defaults[key]
+                for key in incomplete_defaults
+            ):
+                return self.send_json({'error': 'Completa empresa, contacto y próxima acción para finalizar'}, 400)
+            if not capture_complete:
+                has_progress = any(str(data.get(key, '')).strip() for key in (
+                    'company', 'contact', 'preferred_contact', 'contact_phone', 'email', 'company_phone', 'company_location',
+                    'delivery_address', 'delivery_conditions', 'quote_specifications', 'flute', 'ink_count',
+                    'internal_dimensions', 'external_dimensions', 'sample_provided', 'liner_type',
+                    'mikelman_treatment', 'pallet', 'estimated_quantity', 'periodicity', 'payment_terms',
+                    'max_pallet_height', 'target_price', 'box_type', 'drawing_provided'
+                ))
+                if not has_progress:
+                    return self.send_json({'error': 'Captura al menos un dato antes de guardar el avance'}, 400)
             if data['stage'] not in {'new', 'negotiation', 'quoted', 'won', 'lost'}:
                 return self.send_json({'error': 'Selecciona una etapa de negociación válida'}, 400)
             initial_won_value = None
+            initial_lost_reason = None
+            if data['stage'] in {'won', 'lost'} and not capture_complete:
+                return self.send_json({'error': 'Completa el formulario antes de cerrar una oportunidad'}, 400)
             if data['stage'] == 'won':
                 try:
                     initial_won_value = int(data.get('won_value'))
@@ -1093,13 +1189,19 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send_json({'error': 'Captura el importe real de la venta para crearla como ganada'}, 400)
                 if initial_won_value < 0:
                     return self.send_json({'error': 'El importe real de venta no puede ser negativo'}, 400)
+            if data['stage'] == 'lost':
+                initial_lost_reason = str(data.get('lost_reason', '')).strip()[:100]
+                if not initial_lost_reason:
+                    return self.send_json({'error': 'Indica el motivo de pérdida'}, 400)
             preferred_contact = str(data.get('preferred_contact', 'call'))
-            if preferred_contact not in {'call', 'whatsapp', 'email', 'visit', 'facebook', 'linkedin', 'tiktok', 'instagram'}:
+            if preferred_contact and preferred_contact not in {'call', 'whatsapp', 'email', 'visit', 'facebook', 'linkedin', 'tiktok', 'instagram'}:
                 return self.send_json({'error': 'Selecciona un medio de contacto válido'}, 400)
             try:
-                sample_provided = int(data.get('sample_provided', 0))
-                drawing_provided = int(data.get('drawing_provided', 0))
-                if sample_provided not in {0, 1} or drawing_provided not in {0, 1}:
+                sample_provided = int(data['sample_provided']) if data.get('sample_provided') not in (None, '') else None
+                drawing_provided = int(data['drawing_provided']) if data.get('drawing_provided') not in (None, '') else None
+                if sample_provided not in {None, 0, 1} or drawing_provided not in {None, 0, 1}:
+                    raise ValueError
+                if capture_complete and (sample_provided is None or drawing_provided is None):
                     raise ValueError
                 probability = int(data.get('probability', 0))
                 if probability < 0 or probability > 100:
@@ -1144,11 +1246,11 @@ class Handler(BaseHTTPRequestHandler):
                     company_location, delivery_address, delivery_conditions, quote_specifications, flute, ink_count,
                     internal_dimensions, external_dimensions, liner_type, mikelman_treatment, pallet, periodicity,
                     payment_terms, max_pallet_height, target_price, opportunity_type, industry, product_measure,
-                    probability, weighted_forecast, estimated_close_date, pinned_note)
+                    probability, weighted_forecast, estimated_close_date, pinned_note, capture_step, capture_complete, lost_reason)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id''',
-                    (data['company'].strip(), data['contact'].strip(), opportunity_value, estimated_quantity, data['next_action'].strip(), data['stage'], owner_id, data.get('call_date') or None, data.get('call_time') or None, str(data.get('contact_phone', '')).strip() or None, str(data.get('email', '')).strip().lower() or None, str(data.get('company_phone', '')).strip() or None, str(data.get('box_type', '')).strip() or None, str(data.get('internal_code', '')).strip() or None, sample_provided, preferred_contact, drawing_provided, requested_delivery_date, expected_delivery_date, str(data.get('plant', '')).strip() or None, str(data.get('material_code', '')).strip() or None, str(data.get('purchase_order', '')).strip() or None, pieces_per_kg, str(data.get('unit_of_measure', '')).strip() or None, str(data.get('planned_requirement', '')).strip() or None, str(data.get('supplier', '')).strip() or None, str(data.get('company_location', '')).strip() or None, str(data.get('delivery_address', '')).strip() or None, str(data.get('delivery_conditions', '')).strip() or None, str(data.get('quote_specifications', '')).strip() or None, str(data.get('flute', '')).strip() or None, ink_count, str(data.get('internal_dimensions', '')).strip() or None, str(data.get('external_dimensions', '')).strip() or None, str(data.get('liner_type', '')).strip() or None, mikelman_treatment or None, str(data.get('pallet', '')).strip() or None, str(data.get('periodicity', '')).strip() or None, str(data.get('payment_terms', '')).strip() or None, str(data.get('max_pallet_height', '')).strip() or None, target_price, str(data.get('opportunity_type', '')).strip() or None, str(data.get('industry', '')).strip() or None, str(data.get('product_measure', '')).strip() or None, probability, weighted_forecast, estimated_close_date, str(data.get('pinned_note', '')).strip()[:500] or None))
+                            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id''',
+                    (str(data.get('company', '')).strip()[:80] or 'Oportunidad en captura', str(data.get('contact', '')).strip()[:60] or 'Por definir', opportunity_value, estimated_quantity, str(data.get('next_action', '')).strip()[:120] or 'Continuar captura', data['stage'], owner_id, data.get('call_date') or None, data.get('call_time') or None, str(data.get('contact_phone', '')).strip() or None, str(data.get('email', '')).strip().lower() or None, str(data.get('company_phone', '')).strip() or None, str(data.get('box_type', '')).strip() or None, str(data.get('internal_code', '')).strip() or None, sample_provided, preferred_contact or None, drawing_provided, requested_delivery_date, expected_delivery_date, str(data.get('plant', '')).strip() or None, str(data.get('material_code', '')).strip() or None, str(data.get('purchase_order', '')).strip() or None, pieces_per_kg, str(data.get('unit_of_measure', '')).strip() or None, str(data.get('planned_requirement', '')).strip() or None, str(data.get('supplier', '')).strip() or None, str(data.get('company_location', '')).strip() or None, str(data.get('delivery_address', '')).strip() or None, str(data.get('delivery_conditions', '')).strip() or None, str(data.get('quote_specifications', '')).strip() or None, str(data.get('flute', '')).strip() or None, ink_count, str(data.get('internal_dimensions', '')).strip() or None, str(data.get('external_dimensions', '')).strip() or None, str(data.get('liner_type', '')).strip() or None, mikelman_treatment or None, str(data.get('pallet', '')).strip() or None, str(data.get('periodicity', '')).strip() or None, str(data.get('payment_terms', '')).strip() or None, str(data.get('max_pallet_height', '')).strip() or None, target_price, str(data.get('opportunity_type', '')).strip() or None, str(data.get('industry', '')).strip() or None, str(data.get('product_measure', '')).strip() or None, probability, weighted_forecast, estimated_close_date, str(data.get('pinned_note', '')).strip()[:500] or None, capture_step, int(capture_complete), initial_lost_reason))
                 client_id = cursor.fetchone()[0]
                 connection.execute('INSERT INTO client_history(client_id, user_id, to_stage, call_date, call_time, note, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)', (client_id, user['id'], data['stage'], data.get('call_date') or None, data.get('call_time') or None, None, local_timestamp()))
                 connection.execute('INSERT INTO sales_activities(client_id, user_id, activity_type, created_at) VALUES (?, ?, ?, ?)', (client_id, user['id'], 'new_opportunity', local_timestamp()))
@@ -1231,6 +1333,23 @@ class Handler(BaseHTTPRequestHandler):
         user = self.require_user()
         if not user:
             return
+        if path == '/api/admin/dashboard/goal':
+            if user['role'] != 'admin':
+                return self.send_json({'error': 'No autorizado'}, 403)
+            data = self.read_json()
+            try:
+                year = int(data.get('year'))
+                goal = float(data.get('annual_goal'))
+                if year < 2000 or year > 2100 or not math.isfinite(goal) or goal < 0:
+                    raise ValueError
+            except (TypeError, ValueError):
+                return self.send_json({'error': 'Captura un año y una meta anual válidos'}, 400)
+            with db() as connection:
+                connection.execute('''INSERT INTO app_settings(key, value) VALUES (?, ?)
+                    ON CONFLICT(key) DO UPDATE SET value = excluded.value''',
+                    (f'annual_goal_{year}', str(goal)))
+            audit(user, 'Actualizó meta anual', f'{year}: {goal:.2f}')
+            return self.send_json({'ok': True, 'year': year, 'annual_goal': goal})
         if path == '/api/account/password':
             data = self.read_json()
             current_password = str(data.get('current_password', ''))
@@ -1275,12 +1394,33 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send_json({'error': 'Prospecto no encontrado'}, 404)
                 updates = {}
                 try:
-                    for key in ('company', 'contact', 'next_action'):
+                    capture_complete = int(data.get('capture_complete', client['capture_complete']))
+                    capture_step = int(data.get('capture_step', client['capture_step']))
+                    if capture_complete not in {0, 1} or capture_step not in {1, 2, 3} or capture_complete and capture_step != 3:
+                        raise ValueError
+                    incomplete_defaults = {'company': 'Oportunidad en captura', 'contact': 'Por definir', 'next_action': 'Continuar captura'}
+                    if capture_complete and any(
+                        not str(data.get(key, client[key]) or '').strip()
+                        or str(data.get(key, client[key]) or '').strip() == incomplete_defaults[key]
+                        for key in incomplete_defaults
+                    ):
+                        raise ValueError
+                    if capture_complete and any(
+                        (int(data[key]) if data.get(key) not in (None, '') else None) is None
+                        if key in data else client[key] is None
+                        for key in ('sample_provided', 'drawing_provided')
+                    ):
+                        raise ValueError
+                    updates['capture_step'] = capture_step
+                    updates['capture_complete'] = capture_complete
+                    if 'stage' in data:
+                        if data['stage'] not in {'new', 'negotiation', 'quoted'}:
+                            raise ValueError
+                        updates['stage'] = data['stage']
+                    for key, fallback in (('company', 'Oportunidad en captura'), ('contact', 'Por definir'), ('next_action', 'Continuar captura')):
                         if key in data:
                             text = str(data[key]).strip()
-                            if not text:
-                                raise ValueError
-                            updates[key] = text[:120]
+                            updates[key] = text[:120] or (fallback if not capture_complete else '')
                     for key in ('contact_phone', 'company_phone', 'box_type', 'internal_code'):
                         if key in data:
                             updates[key] = str(data[key]).strip()[:120] or None
@@ -1302,7 +1442,7 @@ class Handler(BaseHTTPRequestHandler):
                         updates['email'] = str(data['email']).strip().lower()[:120] or None
                     for key in ('value', 'estimated_quantity'):
                         if key in data:
-                            number = int(data[key])
+                            number = int(data[key] or 0)
                             if number < 0:
                                 raise ValueError
                             updates[key] = number
@@ -1327,13 +1467,13 @@ class Handler(BaseHTTPRequestHandler):
                             raise ValueError
                         updates['mikelman_treatment'] = treatment or None
                     if 'preferred_contact' in data:
-                        if data['preferred_contact'] not in {'call', 'whatsapp', 'email', 'visit', 'facebook', 'linkedin', 'tiktok', 'instagram'}:
+                        if data['preferred_contact'] not in {'', 'call', 'whatsapp', 'email', 'visit', 'facebook', 'linkedin', 'tiktok', 'instagram'}:
                             raise ValueError
-                        updates['preferred_contact'] = data['preferred_contact']
+                        updates['preferred_contact'] = data['preferred_contact'] or None
                     for key in ('sample_provided', 'drawing_provided'):
                         if key in data:
-                            flag = int(data[key])
-                            if flag not in {0, 1}:
+                            flag = int(data[key]) if data[key] not in (None, '') else None
+                            if flag not in {None, 0, 1} or capture_complete and flag is None:
                                 raise ValueError
                             updates[key] = flag
                     for key in ('requested_delivery_date', 'expected_delivery_date', 'estimated_close_date'):
@@ -1341,6 +1481,12 @@ class Handler(BaseHTTPRequestHandler):
                             value = data[key] or None
                             if value:
                                 datetime.strptime(value, '%Y-%m-%d')
+                            updates[key] = value
+                    for key, date_format in (('call_date', '%Y-%m-%d'), ('call_time', '%H:%M')):
+                        if key in data:
+                            value = data[key] or None
+                            if value:
+                                datetime.strptime(value, date_format)
                             updates[key] = value
                     if 'value' in updates or 'probability' in updates:
                         forecast_value = updates.get('value', client['value'])
@@ -1358,6 +1504,11 @@ class Handler(BaseHTTPRequestHandler):
                 # Las columnas salen de una lista fija de arriba, nunca del cliente.
                 assignments = ', '.join(f'{column} = ?' for column in updates)
                 connection.execute(f'UPDATE clients SET {assignments} WHERE id = ?', [*updates.values(), client_id])
+                if updates.get('stage', client['stage']) != client['stage']:
+                    connection.execute('''INSERT INTO client_history(client_id, user_id, from_stage, to_stage,
+                        next_action, created_at) VALUES (?, ?, ?, ?, ?, ?)''',
+                        (client_id, user['id'], client['stage'], updates['stage'],
+                         updates.get('next_action', client['next_action']), local_timestamp()))
             audit(user, 'Editó prospecto', f"{client['company']}: {', '.join(updates)}")
             return self.send_json({'ok': True})
         if path.startswith('/api/clients/'):

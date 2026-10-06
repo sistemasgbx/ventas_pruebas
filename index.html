@@ -39,6 +39,7 @@
       <span><strong>Grubox</strong><small>Control de ventas y prospectos</small></span>
     </a>
     <nav aria-label="Navegación principal">
+      <a href="#dashboard" data-view="dashboard" data-admin-only hidden>Dashboard</a>
       <a href="#clients" class="active" data-view="clients">Clientes</a>
       <a href="#today" data-view="today">Seguimiento <span id="today-badge" class="nav-badge" hidden></span></a>
       <a href="#appointments" data-view="appointments">Citas</a>
@@ -117,7 +118,7 @@
     <section id="today-page" class="today-page" data-page="today" hidden></section>
     <section id="appointments-page" class="appointments-page" data-page="appointments" hidden></section>
     <section id="analysis-page" class="analysis-page" data-page="analysis" hidden></section>
-    <section id="dashboard-page" class="dashboard-page" data-page="analysis" hidden></section>
+    <section id="dashboard-page" class="dashboard-page" data-page="dashboard" hidden></section>
     <section id="kpis-page" class="kpis-page" data-page="kpis" hidden></section>
     <section id="locations-page" class="locations-page" data-page="locations" hidden></section>
     <section id="audit-page" class="audit-page" data-page="audit" hidden></section>
@@ -130,16 +131,18 @@
   <dialog id="client-dialog">
     <form id="client-form" method="dialog">
       <div class="dialog-heading"><div><p class="eyebrow">Nueva oportunidad</p><h2>Agregar prospecto</h2><p id="client-step-caption" class="muted">Paso 1 de 3 · Datos de la empresa</p></div><button type="button" class="close-button" id="close-dialog" aria-label="Cerrar">×</button></div>
+      <input name="clientId" type="hidden">
       <div class="wizard-progress" aria-label="Progreso del formulario"><span class="wizard-step-active">1. Empresa</span><span>2. Checklist</span><span>3. Pipeline</span></div>
       <section class="client-form-step" data-form-step="0">
         <h3 class="form-section-title">Datos de la empresa y contacto</h3>
-        <label>Nombre de la empresa / razón social<input name="company" required maxlength="80" placeholder="Ej. Comercializadora del Centro"></label>
-        <label>Persona de contacto<input name="contact" required maxlength="60" placeholder="Nombre de contacto"></label>
-        <div class="form-grid"><label>Medio de contacto<select name="preferredContact" required><option value="call">Llamada</option><option value="whatsapp">WhatsApp</option><option value="email">Correo electrónico</option><option value="visit">Visita</option><option value="facebook">Facebook</option><option value="linkedin">LinkedIn</option><option value="tiktok">TikTok</option><option value="instagram">Instagram</option></select></label><label>Teléfono de contacto<input name="contactPhone" type="tel" maxlength="25" placeholder="Teléfono o celular"></label></div>
+        <label>Nombre de la empresa / razón social<input name="company" maxlength="80" placeholder="Ej. Comercializadora del Centro"></label>
+        <label>Persona de contacto<input name="contact" maxlength="60" placeholder="Nombre de contacto"></label>
+        <div class="form-grid"><label>Medio de contacto<select name="preferredContact"><option value="">Sin especificar</option><option value="call">Llamada</option><option value="whatsapp">WhatsApp</option><option value="email">Correo electrónico</option><option value="visit">Visita</option><option value="facebook">Facebook</option><option value="linkedin">LinkedIn</option><option value="tiktok">TikTok</option><option value="instagram">Instagram</option></select></label><label>Teléfono de contacto<input name="contactPhone" type="tel" maxlength="25" placeholder="Teléfono o celular"></label></div>
         <div class="form-grid"><label>Correo de contacto<input name="email" type="email" maxlength="120" placeholder="contacto@empresa.com"></label><label>Número de la empresa<input name="companyPhone" type="tel" maxlength="25" placeholder="Teléfono general"></label></div>
         <label>Ubicación de la empresa<input name="companyLocation" maxlength="180" placeholder="Ciudad, estado o dirección"></label>
         <label>Etapa de negociación<select name="stage" id="client-stage"><option value="new">Nuevo</option><option value="negotiation">En negociación</option><option value="quoted">Cotizado</option><option value="won">Ganado</option><option value="lost">Perdido</option></select></label>
         <label id="new-won-value-field" hidden>Importe real vendido (MXN)<input name="wonValue" type="number" min="0" step="1" placeholder="Importe confirmado del pedido"></label>
+        <label id="new-lost-reason-field" hidden>Motivo de pérdida<input name="lostReason" maxlength="100" placeholder="Ej. Precio o tiempo de entrega"></label>
       </section>
       <section class="client-form-step" data-form-step="1" hidden>
         <h3 class="form-section-title">Checklist para cotizar</h3>
@@ -148,26 +151,26 @@
         <label>Especificaciones detalladas a cotizar<textarea name="quoteSpecifications" maxlength="1000" rows="3"></textarea></label>
         <div class="form-grid"><label>Flauta<input name="flute" maxlength="40"></label><label>Número de tintas<input name="inkCount" type="number" min="0" step="1"></label></div>
         <div class="form-grid"><label>Medidas internas<input name="internalDimensions" maxlength="100"></label><label>Medidas externas<input name="externalDimensions" maxlength="100"></label></div>
-        <div class="form-grid"><label>¿Muestra física?<select name="sampleProvided" required><option value="" selected disabled>Selecciona</option><option value="0">No</option><option value="1">Sí</option></select></label><label>Tipo de liner<input name="linerType" maxlength="80"></label></div>
+        <div class="form-grid"><label>¿Muestra física?<select name="sampleProvided"><option value="">Sin especificar</option><option value="0">No</option><option value="1">Sí</option></select></label><label>Tipo de liner<input name="linerType" maxlength="80"></label></div>
         <div class="form-grid"><label>Tratamiento Mikelman<select name="mikelmanTreatment"><option value="">Sin especificar</option><option value="0">No</option><option value="1">Sí</option></select></label><label>Tarima<input name="pallet" maxlength="80"></label></div>
         <div class="form-grid"><label>Volumen / piezas<input name="estimatedQuantity" type="number" min="0" step="1" placeholder="0"></label><label>Periodicidad<input name="periodicity" maxlength="60" placeholder="Ej. Mensual"></label></div>
         <div class="form-grid"><label>Forma de pago<input name="paymentTerms" maxlength="80"></label><label>Altura máxima de tarima<input name="maxPalletHeight" maxlength="40" placeholder="Ej. 1.2 cm"></label></div>
         <div class="form-grid"><label>Precio objetivo<input name="targetPrice" type="number" min="0" step="0.01"></label><label>Tipo de caja / producto<input name="boxType" maxlength="100" placeholder="Ej. Caja troquelada"></label></div>
-        <label>¿El cliente entregó un plano?<select name="drawingProvided" required><option value="" selected disabled>Selecciona</option><option value="0">No</option><option value="1">Sí</option></select></label>
+        <label>¿El cliente entregó un plano?<select name="drawingProvided"><option value="">Sin especificar</option><option value="0">No</option><option value="1">Sí</option></select></label>
       </section>
       <section class="client-form-step" data-form-step="2" hidden>
         <h3 class="form-section-title">Pipeline comercial</h3>
         <div class="form-grid"><label>Tipo de oportunidad<input name="opportunityType" maxlength="80" placeholder="Ej. Cliente nuevo"></label><label>Industria<input name="industry" maxlength="80"></label></div>
         <label>Producto / medida<input name="productMeasure" maxlength="120"></label>
-        <div class="form-grid"><label>Valor de oportunidad (MXN)<input name="value" type="number" min="0" step="1" required placeholder="0"></label><label>Probabilidad (%)<input name="probability" type="number" min="0" max="100" step="1" value="0"></label></div>
+        <div class="form-grid"><label>Valor de oportunidad (MXN)<input name="value" type="number" min="0" step="1" placeholder="0"></label><label>Probabilidad (%)<input name="probability" type="number" min="0" max="100" step="1" value="0"></label></div>
         <label>Forecast ponderado (MXN)<input name="weightedForecast" type="number" readonly value="0" aria-describedby="forecast-help"><small id="forecast-help" class="field-help">Se calcula con el valor de oportunidad y la probabilidad.</small></label>
         <label>Fecha estimada de cierre<input name="estimatedCloseDate" type="date"></label>
-        <label>Motivo / siguiente acción<input name="nextAction" required maxlength="120" placeholder="Ej. Enviar cotización el viernes"></label>
+        <label>Motivo / siguiente acción<input name="nextAction" maxlength="120" placeholder="Ej. Enviar cotización el viernes"></label>
         <div class="form-grid"><label>Fecha de seguimiento<input name="callDate" type="date"></label><label>Hora de seguimiento<input name="callTime" type="time"></label></div>
         <label>Observaciones<textarea name="pinnedNote" maxlength="500" rows="3"></textarea></label>
         <label>Estado del pipeline<input id="client-pipeline-status" value="Activo" readonly></label>
       </section>
-      <div class="dialog-actions wizard-actions"><button type="button" class="button button-quiet" id="cancel-dialog">Cancelar</button><button type="button" class="button button-quiet" id="client-step-back" hidden>Anterior</button><button type="button" class="button button-primary" id="client-step-next">Siguiente</button><button class="button button-primary" id="client-submit" type="submit" hidden>Guardar oportunidad</button></div>
+      <div class="dialog-actions wizard-actions"><button type="button" class="button button-quiet" id="cancel-dialog">Cancelar</button><button type="button" class="button button-quiet" id="client-step-back" hidden>Anterior</button><button type="button" class="button button-quiet" id="client-save-progress">Guardar avance</button><button type="button" class="button button-primary" id="client-step-next">Siguiente</button><button class="button button-primary" id="client-submit" type="button" hidden>Guardar oportunidad</button></div>
     </form>
   </dialog>
   <dialog id="appointment-dialog">

@@ -33,15 +33,19 @@ La barra superior contiene las secciones principales:
 
 Cada persona ve la información que corresponde a su perfil. El vendedor trabaja con sus prospectos; el administrador puede revisar la operación del equipo y gestionar usuarios.
 
+Al iniciar sesión, el administrador entra al **Dashboard comercial**. Ahí consulta la meta anual, el forecast ponderado, las ventas reales, el cumplimiento, el gap, el pipeline, las cuentas recuperadas y los clientes nuevos. La meta se captura para cada año desde el formulario del tablero. El semáforo marca verde con cumplimiento de 100% o más, amarillo entre 90% y 99%, y rojo debajo de 90%.
+
+La gráfica mensual distribuye la meta anual en doce partes iguales y coloca las oportunidades abiertas por su fecha estimada de cierre. Se clasifican según su probabilidad: comprometidas de 70% a 100%, probables de 40% a 69% y posibles de 0% a 39%. El forecast ponderado usa el valor de cada oportunidad multiplicado por su probabilidad.
+
 ## 3. Registrar un prospecto
 
 1. Entra en **Clientes** y selecciona **Nuevo prospecto**.
 2. En **Datos de la empresa**, captura el nombre de la empresa, la persona y el medio de contacto. Puedes elegir llamada, WhatsApp, correo, visita o redes sociales (Facebook, LinkedIn, TikTok e Instagram). Agrega los teléfonos, el correo, la ubicación y la etapa de negociación.
 3. En **Checklist para cotizar**, registra los datos de entrega y las especificaciones del producto. Indica si recibiste una muestra física y un plano; esos dos campos son obligatorios. Completa medidas, flauta, tintas, liner, tarima, volumen, periodicidad, forma de pago, altura de tarima y precio objetivo cuando tengas la información.
 4. En **Pipeline comercial**, captura tipo de oportunidad, industria, producto o medida, valor, probabilidad, fecha estimada de cierre, siguiente acción y observaciones. El forecast ponderado se calcula automáticamente como valor por probabilidad. La fecha de registro y el vendedor se guardan con la oportunidad; el estado se deriva de la etapa comercial.
-5. Usa **Anterior** o **Siguiente** para revisar los tres pasos y selecciona **Guardar oportunidad** al terminar. Los datos quedan guardados juntos al final del formulario.
+5. Puedes guardar un borrador en los pasos **Empresa** o **Checklist** con **Guardar avance**; basta con haber capturado al menos un dato. El borrador aparecerá en el tablero, marcado con el paso pendiente, y puedes retomarlo con **Continuar captura**. Al terminar el paso Pipeline, selecciona **Guardar oportunidad** para completar el registro.
 
-El **valor de oportunidad** es una previsión, no una venta confirmada. Si registras el prospecto directamente como **Ganado**, el sistema también pedirá el importe real vendido.
+El **valor de oportunidad** es una previsión, no una venta confirmada. Si registras el prospecto directamente como **Ganado**, el sistema también pedirá el importe real vendido; si lo registras como **Perdido**, pedirá el motivo de pérdida.
 
 ### Qué significan las etapas
 

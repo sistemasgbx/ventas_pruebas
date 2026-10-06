@@ -19,7 +19,7 @@ let clientStageSummary = {};
 let clientFollowUpCounts = { overdue: 0, today: 0, unscheduled: 0, stale: 0 };
 const CLIENT_PAGE_SIZE = 50;
 let currentUser = null;
-let activeView = 'clients';
+let activeView = null;
 let clientLayout = 'pipeline';
 let locationWatchId = null;
 let locationRefreshTimer = null;
@@ -235,7 +235,7 @@ function render() {
   const visible = getVisibleClients();
   if (clientLayout === 'list') {
     pipeline.classList.add('prospect-list');
-    pipeline.innerHTML = `<div class="audit-table"><table><thead><tr><th>Fecha</th><th>Vendedor</th><th>Cliente / prospecto</th><th>Tipo de oportunidad</th><th>Industria</th><th>Producto / medida</th><th>Valor oportunidad</th><th>Probabilidad</th><th>Forecast ponderado</th><th>Etapa</th><th>Fecha estimada cierre</th><th>Motivo / siguiente acción</th><th>Estado</th><th>Observaciones</th><th>Planta</th><th>Código MP</th><th>OC</th><th>Piezas / Kg</th><th>UM</th><th>Requerimiento planeado</th><th>Fecha de entrega</th><th>Proveedor</th><th>Acciones</th></tr></thead><tbody>${visible.map(client => `<tr><td>${escapeHtml(client.created_at || '')}</td><td>${escapeHtml(client.owner_name || '')}</td><td><strong>${escapeHtml(client.company)}</strong><span class="table-subtext">${escapeHtml(client.contact)}</span></td><td>${escapeHtml(client.opportunity_type || '')}</td><td>${escapeHtml(client.industry || '')}</td><td>${escapeHtml(client.product_measure || '')}</td><td>${money.format(client.value)}</td><td>${Number(client.probability || 0)}%</td><td>${money.format(client.weighted_forecast || 0)}</td><td>${escapeHtml(stageLabel(client.stage))}</td><td>${client.estimated_close_date ? escapeHtml(formatCalendarDate(client.estimated_close_date)) : ''}</td><td>${escapeHtml(client.next_action || '')}</td><td>${client.stage === 'won' ? 'Ganada' : client.stage === 'lost' ? 'Perdida' : 'Activa'}</td><td>${escapeHtml(client.pinned_note || '')}</td><td>${escapeHtml(client.plant || '')}</td><td>${escapeHtml(client.material_code || '')}</td><td>${escapeHtml(client.purchase_order || '')}</td><td>${client.pieces_per_kg == null ? '' : escapeHtml(Number(client.pieces_per_kg).toLocaleString('es-MX'))}</td><td>${escapeHtml(client.unit_of_measure || '')}</td><td>${escapeHtml(client.planned_requirement || '')}</td><td>${client.expected_delivery_date || client.requested_delivery_date ? escapeHtml(formatCalendarDate(client.expected_delivery_date || client.requested_delivery_date)) : ''}</td><td>${escapeHtml(client.supplier || '')}</td><td><div class="list-actions"><button class="button button-quiet follow-up-button" data-id="${client.id}" type="button" aria-label="Seguimiento de ${escapeHtml(client.company)}">◷</button><button class="button button-quiet edit-button" data-id="${client.id}" type="button">Editar</button></div></td></tr>`).join('') || '<tr><td colspan="23">Sin registros</td></tr>'}</tbody></table></div>`;
+    pipeline.innerHTML = `<div class="audit-table"><table><thead><tr><th>Fecha</th><th>Vendedor</th><th>Cliente / prospecto</th><th>Tipo de oportunidad</th><th>Industria</th><th>Producto / medida</th><th>Valor oportunidad</th><th>Probabilidad</th><th>Forecast ponderado</th><th>Etapa</th><th>Fecha estimada cierre</th><th>Motivo / siguiente acción</th><th>Estado</th><th>Observaciones</th><th>Planta</th><th>Código MP</th><th>OC</th><th>Piezas / Kg</th><th>UM</th><th>Requerimiento planeado</th><th>Fecha de entrega</th><th>Proveedor</th><th>Acciones</th></tr></thead><tbody>${visible.map(client => `<tr><td>${escapeHtml(client.created_at || '')}</td><td>${escapeHtml(client.owner_name || '')}</td><td><strong>${escapeHtml(client.company)}</strong><span class="table-subtext">${escapeHtml(client.contact)}</span></td><td>${escapeHtml(client.opportunity_type || '')}</td><td>${escapeHtml(client.industry || '')}</td><td>${escapeHtml(client.product_measure || '')}</td><td>${money.format(client.value)}</td><td>${Number(client.probability || 0)}%</td><td>${money.format(client.weighted_forecast || 0)}</td><td>${escapeHtml(stageLabel(client.stage))}</td><td>${client.estimated_close_date ? escapeHtml(formatCalendarDate(client.estimated_close_date)) : ''}</td><td>${escapeHtml(client.next_action || '')}</td><td>${Number(client.capture_complete) === 0 ? `Captura pendiente · paso ${Number(client.capture_step || 1)} de 3` : client.stage === 'won' ? 'Ganada' : client.stage === 'lost' ? 'Perdida' : 'Activa'}</td><td>${escapeHtml(client.pinned_note || '')}</td><td>${escapeHtml(client.plant || '')}</td><td>${escapeHtml(client.material_code || '')}</td><td>${escapeHtml(client.purchase_order || '')}</td><td>${client.pieces_per_kg == null ? '' : escapeHtml(Number(client.pieces_per_kg).toLocaleString('es-MX'))}</td><td>${escapeHtml(client.unit_of_measure || '')}</td><td>${escapeHtml(client.planned_requirement || '')}</td><td>${client.expected_delivery_date || client.requested_delivery_date ? escapeHtml(formatCalendarDate(client.expected_delivery_date || client.requested_delivery_date)) : ''}</td><td>${escapeHtml(client.supplier || '')}</td><td><div class="list-actions">${Number(client.capture_complete) === 0 ? `<button class="button button-primary continue-capture-button" data-id="${client.id}" type="button">Continuar</button>` : `<button class="button button-quiet follow-up-button" data-id="${client.id}" type="button" aria-label="Seguimiento de ${escapeHtml(client.company)}">◷</button><button class="button button-quiet edit-button" data-id="${client.id}" type="button">Editar</button>`}</div></td></tr>`).join('') || '<tr><td colspan="23">Sin registros</td></tr>'}</tbody></table></div>`;
   } else {
     pipeline.classList.remove('prospect-list');
     pipeline.innerHTML = stages.map(stage => {
@@ -289,6 +289,7 @@ function renderCard(client) {
   const status = followUpStatus(client);
   const idle = isOpen(client) ? daysSinceMovement(client) : null;
   const badges = [
+    Number(client.capture_complete) === 0 ? `<span class="badge badge-warn">Captura pendiente · paso ${Number(client.capture_step || 1)} de 3</span>` : '',
     status === 'overdue' ? '<span class="badge badge-overdue">Vencido</span>' : '',
     status === 'today' ? '<span class="badge badge-today">Hoy</span>' : '',
     status === 'unscheduled' ? '<span class="badge badge-warn">Sin seguimiento</span>' : '',
@@ -296,8 +297,9 @@ function renderCard(client) {
   ].join('');
   const deleteButton = currentUser?.role === 'admin' ? `<button class="delete-client" data-id="${client.id}" data-company="${escapeHtml(client.company)}" type="button">Eliminar prospecto</button>` : '';
   const shownValue = client.stage === 'won' && client.won_value !== null && client.won_value !== undefined ? client.won_value : client.value;
-  return `<div class="client-card" data-stage="${client.stage}" data-follow="${status}" data-id="${client.id}" draggable="true">
-    <h3>${escapeHtml(client.company)}</h3>
+  const displayCompany = Number(client.capture_complete) === 0 && client.company === 'Oportunidad en captura' ? 'Oportunidad en captura' : client.company;
+  return `<div class="client-card" data-stage="${client.stage}" data-follow="${status}" data-id="${client.id}" draggable="${Number(client.capture_complete) !== 0}">
+    <h3>${escapeHtml(displayCompany)}</h3>
     ${badges ? `<div class="badge-row">${badges}</div>` : ''}
     <p>${escapeHtml(client.contact)}</p>
     ${contactData ? `<p class="contact-data">${contactData}</p>` : ''}
@@ -313,11 +315,13 @@ function renderCard(client) {
       <p class="movement-info"><strong>Último movimiento:</strong> ${escapeHtml(movement)}${client.last_movement_at ? ` · ${escapeHtml(formatMovementTimestamp(client.last_movement_at))}` : ''}</p>
       ${client.last_note ? `<p class="movement-note">${escapeHtml(client.last_note)}</p>` : ''}
     </div>
-    ${isOpen(client) ? `<div class="contact-actions">${contactActions(client)}</div>` : ''}
+    ${isOpen(client) && Number(client.capture_complete) !== 0 ? `<div class="contact-actions">${contactActions(client)}</div>` : ''}
     <div class="card-actions">
-      <button class="button button-quiet follow-up-button" data-id="${client.id}" type="button"><span aria-hidden="true">◷</span> Seguimiento</button>
-      <button class="button button-quiet edit-button" data-id="${client.id}" type="button">✎ Editar</button>
-      <label><span class="sr-only">Cambiar etapa</span><select class="move-select" data-id="${client.id}" aria-label="Cambiar etapa de ${escapeHtml(client.company)}">${stages.map(stage => `<option value="${stage.id}" ${stage.id === client.stage ? 'selected' : ''}>Mover a ${stage.label}</option>`).join('')}</select></label>
+      ${Number(client.capture_complete) === 0
+        ? `<button class="button button-primary continue-capture-button" data-id="${client.id}" type="button">Continuar captura</button>`
+        : `<button class="button button-quiet follow-up-button" data-id="${client.id}" type="button"><span aria-hidden="true">◷</span> Seguimiento</button>
+           <button class="button button-quiet edit-button" data-id="${client.id}" type="button">✎ Editar</button>
+           <label><span class="sr-only">Cambiar etapa</span><select class="move-select" data-id="${client.id}" aria-label="Cambiar etapa de ${escapeHtml(client.company)}">${stages.map(stage => `<option value="${stage.id}" ${stage.id === client.stage ? 'selected' : ''}>Mover a ${stage.label}</option>`).join('')}</select></label>`}
     </div>
     ${deleteButton}
   </div>`;
@@ -531,7 +535,6 @@ async function showAnalysis() {
   document.querySelector('#analysis-open-appointments').addEventListener('click', () => showView('appointments'));
   const analysisStagesTitle = document.querySelector('#analysis-page .analysis-pipeline h2');
   if (analysisStagesTitle) analysisStagesTitle.textContent = 'Oportunidades por etapa';
-  if (currentUser.role === 'admin') await showDashboard();
 }
 
 async function showKpis(week = currentIsoWeek()) {
@@ -679,6 +682,7 @@ function showClientFormStep(step) {
   document.querySelector('#client-step-back').hidden = step === 0;
   document.querySelector('#client-step-next').hidden = step === clientFormSteps.length - 1;
   document.querySelector('#client-submit').hidden = step !== clientFormSteps.length - 1;
+  document.querySelector('#client-save-progress').hidden = step === clientFormSteps.length - 1;
 }
 document.querySelector('#client-step-next').addEventListener('click', () => {
   const controls = [...clientFormSteps[clientFormStep].querySelectorAll('input, select, textarea')];
@@ -696,32 +700,30 @@ function updateWeightedForecast() {
 document.querySelector('#client-stage').addEventListener('change', event => {
   const stage = event.target.value;
   const isWon = stage === 'won';
+  const isLost = stage === 'lost';
   document.querySelector('#new-won-value-field').hidden = !isWon;
+  document.querySelector('#new-lost-reason-field').hidden = !isLost;
   clientForm.elements.wonValue.required = isWon;
-  document.querySelector('#client-pipeline-status').value = isWon ? 'Ganado' : stage === 'lost' ? 'Perdido' : 'Activo';
+  clientForm.elements.lostReason.required = isLost;
+  document.querySelector('#client-pipeline-status').value = isWon ? 'Ganado' : isLost ? 'Perdido' : 'Activo';
 });
-clientForm.addEventListener('submit', async event => {
-  event.preventDefault();
-  if (clientFormStep < clientFormSteps.length - 1) {
-    const controls = [...clientFormSteps[clientFormStep].querySelectorAll('input, select, textarea')];
-    const invalid = controls.find(control => !control.checkValidity());
-    if (invalid) invalid.reportValidity();
-    else showClientFormStep(clientFormStep + 1);
-    return;
-  }
-  if (!clientForm.reportValidity()) return;
+function clientFormPayload(complete) {
   const form = new FormData(clientForm);
   const optionalNumber = name => form.get(name) === '' ? null : Number(form.get(name));
-  const payload = {
+  return {
+    client_id: form.get('clientId'),
+    capture_step: complete ? 3 : clientFormStep + 1,
+    capture_complete: complete ? 1 : 0,
     company: form.get('company'), contact: form.get('contact'),
     contact_phone: form.get('contactPhone'), email: form.get('email'),
     company_phone: form.get('companyPhone'), company_location: form.get('companyLocation'),
     preferred_contact: form.get('preferredContact'), stage: form.get('stage'),
-    won_value: optionalNumber('wonValue'), value: Number(form.get('value')),
+    won_value: optionalNumber('wonValue'), value: optionalNumber('value') || 0,
+    lost_reason: form.get('lostReason'),
     estimated_quantity: optionalNumber('estimatedQuantity') || 0,
     box_type: form.get('boxType'), next_action: form.get('nextAction'),
     call_date: form.get('callDate'), call_time: form.get('callTime'),
-    sample_provided: Number(form.get('sampleProvided')), drawing_provided: Number(form.get('drawingProvided')),
+    sample_provided: optionalNumber('sampleProvided'), drawing_provided: optionalNumber('drawingProvided'),
     delivery_address: form.get('deliveryAddress'), delivery_conditions: form.get('deliveryConditions'),
     quote_specifications: form.get('quoteSpecifications'), flute: form.get('flute'),
     ink_count: optionalNumber('inkCount'), internal_dimensions: form.get('internalDimensions'),
@@ -730,16 +732,64 @@ clientForm.addEventListener('submit', async event => {
     periodicity: form.get('periodicity'), payment_terms: form.get('paymentTerms'),
     max_pallet_height: form.get('maxPalletHeight'), target_price: optionalNumber('targetPrice'),
     opportunity_type: form.get('opportunityType'), industry: form.get('industry'),
-    product_measure: form.get('productMeasure'), probability: Number(form.get('probability')),
+    product_measure: form.get('productMeasure'), probability: Number(form.get('probability') || 0),
     estimated_close_date: form.get('estimatedCloseDate'), pinned_note: form.get('pinnedNote')
   };
+}
+async function saveClientProgress(complete) {
+  const payload = clientFormPayload(complete);
+  if (!complete && ['won', 'lost'].includes(payload.stage)) {
+    return alert('Para cerrar como Ganado o Perdido, termina primero la captura de la oportunidad.');
+  }
+  if (complete) {
+    for (const name of ['company', 'contact', 'nextAction', 'value', 'sampleProvided', 'drawingProvided']) {
+      const control = clientForm.elements[name];
+      if (!String(control.value || '').trim()) {
+        control.focus();
+        return alert(`Completa el campo "${control.labels?.[0]?.textContent || name}" para guardar la oportunidad.`);
+      }
+    }
+    if (payload.stage === 'won' && payload.won_value == null) {
+      showClientFormStep(0);
+      clientForm.elements.wonValue.focus();
+      return alert('Captura el importe real vendido para finalizar como Ganado.');
+    }
+    if (payload.stage === 'lost' && !String(payload.lost_reason || '').trim()) {
+      showClientFormStep(0);
+      clientForm.elements.lostReason.focus();
+      return alert('Indica el motivo de pérdida para finalizar como Perdido.');
+    }
+    const invalid = [...clientForm.querySelectorAll('input[type="email"], input[type="number"]')].find(control => control.value && !control.checkValidity());
+    if (invalid) { invalid.reportValidity(); return; }
+  }
   try {
-    await api('/api/clients', { method: 'POST', body: JSON.stringify(payload) });
+    const clientId = payload.client_id;
+    delete payload.client_id;
+    if (clientId) {
+      const closingStage = ['won', 'lost'].includes(payload.stage) ? payload.stage : null;
+      if (closingStage) {
+        delete payload.stage;
+      }
+      await api(`/api/clients/${clientId}/edit`, { method: 'PATCH', body: JSON.stringify(payload) });
+      if (closingStage) {
+        await api(`/api/clients/${clientId}`, { method: 'PATCH', body: JSON.stringify({
+          stage: closingStage,
+          won_value: payload.won_value,
+          lost_reason: payload.lost_reason
+        }) });
+      }
+    } else {
+      const result = await api('/api/clients', { method: 'POST', body: JSON.stringify(payload) });
+      payload.client_id = result.id;
+    }
     resetClientForm();
     document.querySelector('#client-dialog').close();
     await loadClients();
+    if (!complete) alert('Avance guardado. Puedes retomarlo desde la tarjeta del prospecto.');
   } catch (error) { alert(error.message); }
-});
+}
+document.querySelector('#client-save-progress').addEventListener('click', () => saveClientProgress(false));
+document.querySelector('#client-submit').addEventListener('click', () => saveClientProgress(true));
 showClientFormStep(0);
 document.querySelector('#sale-form').addEventListener('submit', async event => {
   event.preventDefault();
@@ -793,11 +843,16 @@ document.querySelector('#activity-form').addEventListener('submit', async event 
     if (activeView === 'kpis') await showKpis(document.querySelector('#kpi-week').value);
   } catch (error) { alert(error.message); }
 });
-document.querySelector('#new-client').addEventListener('click', () => { showClientFormStep(0); document.querySelector('#client-dialog').showModal(); });
+document.querySelector('#new-client').addEventListener('click', () => { resetClientForm(); document.querySelector('#client-dialog').showModal(); });
 function resetClientForm() {
   clientForm.reset();
+  clientForm.elements.clientId.value = '';
+  document.querySelector('#client-dialog h2').textContent = 'Agregar prospecto';
+  document.querySelector('#client-dialog .eyebrow').textContent = 'Nueva oportunidad';
   document.querySelector('#new-won-value-field').hidden = true;
+  document.querySelector('#new-lost-reason-field').hidden = true;
   clientForm.elements.wonValue.required = false;
+  clientForm.elements.lostReason.required = false;
   document.querySelector('#client-pipeline-status').value = 'Activo';
   showClientFormStep(0);
 }
@@ -883,7 +938,10 @@ document.querySelector('#today').textContent = new Intl.DateTimeFormat('es-MX', 
 // ---------- Arrastrar y soltar entre etapas ----------
 pipeline.addEventListener('dragstart', event => {
   const card = event.target.closest('.client-card');
-  if (!card) return;
+  if (!card || Number(clients.find(item => String(item.id) === card.dataset.id)?.capture_complete) === 0) {
+    event.preventDefault();
+    return;
+  }
   event.dataTransfer.setData('text/plain', card.dataset.id);
   event.dataTransfer.effectAllowed = 'move';
   card.classList.add('dragging');
@@ -948,6 +1006,45 @@ pipeline.addEventListener('click', event => {
   const button = event.target.closest('.edit-button');
   if (button) openEditDialog(button.dataset.id).catch(error => alert(error.message));
 });
+pipeline.addEventListener('click', event => {
+  const button = event.target.closest('.continue-capture-button');
+  if (button) openClientDraft(button.dataset.id);
+});
+function openClientDraft(id) {
+  const client = clients.find(item => String(item.id) === String(id));
+  if (!client) return;
+  resetClientForm();
+  clientForm.elements.clientId.value = client.id;
+  const fieldMap = {
+    company: 'company', contact: 'contact', preferredContact: 'preferred_contact',
+    contactPhone: 'contact_phone', email: 'email', companyPhone: 'company_phone',
+    companyLocation: 'company_location', stage: 'stage', wonValue: 'won_value',
+    lostReason: 'lost_reason',
+    deliveryAddress: 'delivery_address', deliveryConditions: 'delivery_conditions',
+    quoteSpecifications: 'quote_specifications', flute: 'flute', inkCount: 'ink_count',
+    internalDimensions: 'internal_dimensions', externalDimensions: 'external_dimensions',
+    sampleProvided: 'sample_provided', linerType: 'liner_type',
+    mikelmanTreatment: 'mikelman_treatment', pallet: 'pallet',
+    estimatedQuantity: 'estimated_quantity', periodicity: 'periodicity',
+    paymentTerms: 'payment_terms', maxPalletHeight: 'max_pallet_height',
+    targetPrice: 'target_price', boxType: 'box_type', drawingProvided: 'drawing_provided',
+    opportunityType: 'opportunity_type', industry: 'industry', productMeasure: 'product_measure',
+    value: 'value', probability: 'probability', estimatedCloseDate: 'estimated_close_date',
+    nextAction: 'next_action', callDate: 'call_date', callTime: 'call_time', pinnedNote: 'pinned_note'
+  };
+  Object.entries(fieldMap).forEach(([formName, clientName]) => {
+    clientForm.elements[formName].value = client[clientName] ?? '';
+  });
+  if (client.company === 'Oportunidad en captura') clientForm.elements.company.value = '';
+  if (client.contact === 'Por definir') clientForm.elements.contact.value = '';
+  if (client.next_action === 'Continuar captura') clientForm.elements.nextAction.value = '';
+  clientForm.elements.stage.dispatchEvent(new Event('change'));
+  updateWeightedForecast();
+  document.querySelector('#client-dialog h2').textContent = 'Continuar captura';
+  document.querySelector('#client-dialog .eyebrow').textContent = 'Oportunidad en borrador';
+  showClientFormStep(Math.min(2, Math.max(0, Number(client.capture_step || 1) - 1)));
+  document.querySelector('#client-dialog').showModal();
+}
 document.querySelector('#edit-form').addEventListener('submit', async event => {
   event.preventDefault();
   const form = new FormData(event.target);
@@ -977,19 +1074,61 @@ function bindRange(prefix, filters, reload) {
 
 // ---------- Panel gerencial ----------
 async function showDashboard() {
-  const data = await api('/api/admin/summary');
-  const stageData = stages.map(stage => ({ ...stage, count: data.stages.find(item => item.stage === stage.id)?.count || 0 }));
-  const maxStageCount = Math.max(...stageData.map(item => item.count), 1);
-  const callLabels = { overdue: 'Vencidas', today: 'Hoy', soon: 'Próximas', later: 'Después' };
-  const callStats = Object.fromEntries((data.call_stats || []).map(item => [item.status, item.count]));
-  const notifications = data.notifications || [];
-  const maxLost = Math.max(...(data.lost_reasons || []).map(item => Number(item.amount)), 1);
-  const sellerFollowHtml = `<section class="data-panel seller-follow-panel"><div class="panel-heading"><h2>Seguimiento por vendedor</h2><span>Estado actual</span></div><div class="audit-table"><table><thead><tr><th>Vendedor</th><th>Vencidos</th><th>Hoy</th><th>Sin fecha</th><th>Seguimientos (semana)</th></tr></thead><tbody>${(data.seller_follow || []).map(seller => `<tr><td><strong>${escapeHtml(seller.name)}</strong></td><td class="${seller.overdue ? 'text-overdue' : ''}">${seller.overdue}</td><td>${seller.today}</td><td>${seller.unscheduled}</td><td>${seller.follow_ups_week}</td></tr>`).join('') || '<tr><td colspan="5">No hay vendedores activos.</td></tr>'}</tbody></table></div></section>`;
-  const lostHtml = `<section class="data-panel chart-panel"><div class="panel-heading"><h2>Motivos de pérdida</h2><span>Dinero perdido</span></div>${(data.lost_reasons || []).map(item => `<div class="chart-row"><span>${escapeHtml(item.reason)}</span><div class="chart-track"><i style="width:${Number(item.amount) / maxLost * 100}%"></i></div><strong>${item.count} · ${money.format(item.amount)}</strong></div>`).join('') || '<p class="empty-state">Aún no hay oportunidades perdidas.</p>'}</section>`;
-  document.querySelector('#dashboard-page').innerHTML = `<div class="page-heading"><div><p class="eyebrow">Administración / Rendimiento</p><h1>Panel gerencial</h1><p class="muted">Una lectura rápida de la operación comercial.</p></div><span class="date-label">Todos los vendedores</span></div><section class="summary"><div><span>Oportunidades</span><strong>${data.totals.total}</strong></div><div><span>Dinero ganado</span><strong>${money.format(data.totals.won_value)}</strong></div><div><span>Dinero en pipeline</span><strong>${money.format(data.totals.active_value)}</strong></div><div><span>Dinero perdido</span><strong>${money.format(data.totals.lost_value)}</strong></div></section><div class="dashboard-grid"><section class="data-panel chart-panel"><div class="panel-heading"><h2>Prospectos por etapa</h2><span>Volumen</span></div>${stageData.map(item => `<div class="chart-row"><span>${item.label}</span><div class="chart-track"><i style="width:${item.count / maxStageCount * 100}%"></i></div><strong>${item.count}</strong></div>`).join('')}</section><section class="data-panel chart-panel"><div class="panel-heading"><h2>Ventas por vendedor</h2><span>Dinero ganado</span></div>${data.sellers.map(seller => `<div class="chart-row"><span>${escapeHtml(seller.name)}</span><div class="chart-track"><i style="width:${data.totals.won_value ? Math.min(100, seller.won_value / data.totals.won_value * 100) : 0}%"></i></div><strong>${money.format(seller.won_value)}</strong></div>`).join('') || '<p class="empty-state">No hay vendedores activos.</p>'}</section><section class="data-panel chart-panel"><div class="panel-heading"><h2>Seguimientos pendientes</h2><span>Prospectos activos</span></div>${Object.keys(callLabels).map(status => `<div class="chart-row"><span>${callLabels[status]}</span><div class="chart-track"><i class="chart-${status}" style="width:${callStats[status] ? Math.max(8, callStats[status] / Math.max(...Object.values(callStats), 1) * 100) : 0}%"></i></div><strong>${callStats[status] || 0}</strong></div>`).join('')}</section><section class="data-panel notification-panel"><div class="panel-heading"><h2>Notificaciones</h2><span>${notifications.length ? `${notifications.length} pendientes` : 'Todo al día'}</span></div>${notifications.length ? `<div class="notification-list">${notifications.map(item => `<button class="notification-item notification-${item.priority}" type="button" data-client-id="${item.id}"><span class="notification-icon" aria-hidden="true">!</span><span><strong>${escapeHtml(item.company)}</strong><small>${item.priority === 'overdue' ? 'Seguimiento vencido' : item.priority === 'today' ? 'Seguimiento para hoy' : 'Seguimiento próximo'} · ${escapeHtml(item.owner_name)}${item.call_time ? ` · ${escapeHtml(item.call_time)}` : ''}</small></span><span aria-hidden="true">→</span></button>`).join('')}</div>` : '<p class="empty-state">No hay seguimientos vencidos ni próximos.</p>'}</section>${sellerFollowHtml}${lostHtml}</div>`;
-  document.querySelector('#dashboard-page h1').textContent = 'Resumen gerencial';
-  document.querySelectorAll('#dashboard-page .summary span')[2].textContent = 'Dinero en oportunidades activas';
-  document.querySelectorAll('.notification-item').forEach(button => button.addEventListener('click', () => openFollowUp(button.dataset.clientId).catch(error => alert(error.message))));
+  const year = Number(document.querySelector('#dashboard-year')?.value || new Date().getFullYear());
+  const data = await api(`/api/admin/dashboard?year=${year}`);
+  const percent = value => `${Number(value || 0).toLocaleString('es-MX', { maximumFractionDigits: 1 })}%`;
+  const compliance = Number(data.compliance || 0);
+  const signal = compliance >= 100 ? 'green' : compliance >= 90 ? 'yellow' : 'red';
+  const metrics = [
+    ['Meta anual', money.format(data.annual_goal)],
+    ['Forecast ponderado', money.format(data.weighted_forecast)],
+    ['Venta real', money.format(data.actual_sales)],
+    ['Cumplimiento', percent(compliance), signal],
+    ['Gap vs meta', money.format(data.gap)],
+    ['Pipeline total', money.format(data.pipeline_total)],
+    ['Pipeline / Meta', percent(data.pipeline_to_goal)],
+    ['Cuentas recuperadas', Number(data.recovered_accounts).toLocaleString('es-MX')],
+    ['Clientes nuevos', Number(data.new_clients).toLocaleString('es-MX')]
+  ];
+  const series = [
+    { key: 'goal', label: 'Meta de ventas', color: '#4f81bd' },
+    { key: 'committed', label: 'Venta comprometida', color: '#c65353' },
+    { key: 'probable', label: 'Venta probable', color: '#8ab65a' },
+    { key: 'possible', label: 'Venta posible', color: '#8064a2' },
+    { key: 'weighted_forecast', label: 'Forecast ponderado', color: '#43a7bd' }
+  ];
+  const width = 900, height = 390, left = 82, right = 24, top = 24, bottom = 66;
+  const chartWidth = width - left - right, chartHeight = height - top - bottom;
+  const maximum = Math.max(1, ...data.months.flatMap(month => series.map(item => Number(month[item.key] || 0))));
+  const x = index => left + index * chartWidth / 11;
+  const y = value => top + chartHeight - Number(value || 0) / maximum * chartHeight;
+  const compactMoney = new Intl.NumberFormat('es-MX', { notation: 'compact', maximumFractionDigits: 1 });
+  const grid = Array.from({ length: 5 }, (_, index) => {
+    const value = maximum * (4 - index) / 4;
+    const gridY = y(value);
+    return `<g><line x1="${left}" y1="${gridY}" x2="${width - right}" y2="${gridY}" class="dashboard-gridline"/><text x="${left - 10}" y="${gridY + 4}" text-anchor="end" class="dashboard-axis-label">${escapeHtml(compactMoney.format(value))}</text></g>`;
+  }).join('');
+  const monthLabels = data.months.map((month, index) => {
+    const date = new Date(Date.UTC(data.year, month.month - 1, 1));
+    const label = new Intl.DateTimeFormat('es-MX', { month: 'short', timeZone: 'UTC' }).format(date);
+    return `<text x="${x(index)}" y="${height - 34}" text-anchor="middle" class="dashboard-axis-label">${escapeHtml(label)}</text>`;
+  }).join('');
+  const lines = series.map(item => {
+    const points = data.months.map((month, index) => `${x(index)},${y(month[item.key])}`).join(' ');
+    return `<polyline points="${points}" fill="none" stroke="${item.color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>${data.months.map((month, index) => `<circle cx="${x(index)}" cy="${y(month[item.key])}" r="3.5" fill="${item.color}"><title>${escapeHtml(item.label)} ${index + 1}: ${escapeHtml(money.format(month[item.key]))}</title></circle>`).join('')}`;
+  }).join('');
+  const legend = series.map(item => `<span class="dashboard-legend-item"><i style="--series-color:${item.color}"></i>${item.label}</span>`).join('');
+  document.querySelector('#dashboard-page').innerHTML = `<div class="page-heading"><div><p class="eyebrow">Administración / Ventas</p><h1>Dashboard comercial</h1><p class="muted">Resumen anual y pronóstico de todos los vendedores.</p></div></div><div class="executive-dashboard"><section class="data-panel dashboard-metrics"><div class="panel-heading"><h2>Indicadores</h2><span>${data.year}</span></div><div class="dashboard-metric-table">${metrics.map(([label, value, tone]) => `<div class="dashboard-metric-row"><strong>${label}</strong><span>${value}</span>${tone ? `<b class="dashboard-signal dashboard-signal-${tone}">${tone === 'green' ? 'Verde' : tone === 'yellow' ? 'Amarillo' : 'Rojo'}</b>` : ''}</div>`).join('')}</div><form id="dashboard-goal-form" class="dashboard-goal-form"><label>Año<input name="year" id="dashboard-year" type="number" min="2000" max="2100" value="${data.year}" required></label><label>Meta anual (MXN)<input name="annual_goal" type="number" min="0" step="0.01" value="${Number(data.annual_goal).toFixed(2)}" required></label><button class="button button-primary" type="submit">Guardar meta</button><p id="dashboard-goal-message" class="field-help" aria-live="polite"></p></form><div class="dashboard-signal-key"><strong>Semáforo de cumplimiento</strong><span class="dashboard-signal-green">Verde · 100% o más</span><span class="dashboard-signal-yellow">Amarillo · 90–99%</span><span class="dashboard-signal-red">Rojo · menos de 90%</span></div></section><section class="data-panel dashboard-chart-panel"><div class="panel-heading"><div><h2>Meta vs Forecast ponderado</h2><span>Montos mensuales por fecha estimada de cierre · ${data.year}</span></div></div><div class="dashboard-chart-scroll"><svg class="dashboard-line-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Gráfica mensual de meta, oportunidades comprometidas, probables, posibles y forecast ponderado">${grid}<line x1="${left}" y1="${top + chartHeight}" x2="${width - right}" y2="${top + chartHeight}" class="dashboard-axis"/><text x="19" y="${top + chartHeight / 2}" transform="rotate(-90 19 ${top + chartHeight / 2})" text-anchor="middle" class="dashboard-axis-label">Monto (MXN)</text>${lines}${monthLabels}<text x="${left + chartWidth / 2}" y="${height - 7}" text-anchor="middle" class="dashboard-axis-label">Mes</text></svg></div><div class="dashboard-chart-legend">${legend}</div><p class="dashboard-chart-note">Las oportunidades se clasifican por probabilidad: comprometida 70–100%, probable 40–69% y posible 0–39%. La meta anual se distribuye en partes iguales por mes.</p></section></div>`;
+  document.querySelector('#dashboard-year').addEventListener('change', () => showDashboard().catch(error => alert(error.message)));
+  document.querySelector('#dashboard-goal-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const form = new FormData(event.target);
+    const message = document.querySelector('#dashboard-goal-message');
+    try {
+      await api('/api/admin/dashboard/goal', { method: 'PATCH', body: JSON.stringify({ year: Number(form.get('year')), annual_goal: Number(form.get('annual_goal')) }) });
+      await showDashboard();
+    } catch (error) { message.textContent = error.message; }
+  });
 }
 
 // ---------- Ubicaciones ----------
@@ -1119,6 +1258,7 @@ async function showView(view) {
   applyRoleVisibility(); // oculta el panel de ubicación al admin y fuera de Clientes
   document.querySelectorAll('[data-view]').forEach(link => link.classList.toggle('active', link.dataset.view === view));
   if (view === 'clients' || view === 'today') await loadClients(); // datos frescos; en "today" también dibuja la vista
+  if (view === 'dashboard') await showDashboard();
   if (view === 'appointments') await showAppointments();
   if (view === 'analysis') await showAnalysis();
   if (view === 'kpis') await showKpis();
@@ -1153,6 +1293,7 @@ async function startSession(user) {
   announceFollowUps();
   setInterval(checkReminders, 60000);
   checkReminders();
+  await showView(user.role === 'admin' ? 'dashboard' : 'clients');
 }
 
 document.querySelector('#login-form').addEventListener('submit', async event => {
