@@ -17,7 +17,7 @@
       <p class="muted">Ingresa para continuar con tu seguimiento comercial.</p>
       <div class="location-notice" role="note">
         <strong>Aviso de ubicación</strong>
-        <p>Si tu cuenta es de vendedor, la aplicación puede solicitar la ubicación de este dispositivo. El administrador podrá consultar tu última ubicación de trabajo cuando actives esta función; no se comparte sin tu acción y permiso.</p>
+        <p>Si tu cuenta es de vendedor, al iniciar sesión se solicitará permiso al navegador para registrar y compartir la ubicación de trabajo mientras uses el CRM. Puedes detenerlo desde la sección Clientes; el administrador podrá consultar la última señal y su historial.</p>
       </div>
       <form id="login-form" class="login-form">
         <label>Usuario<input name="username" required autocomplete="username" placeholder="Tu usuario"></label>
@@ -39,11 +39,10 @@
       <span><strong>Grubox</strong><small>Control de ventas y prospectos</small></span>
     </a>
     <nav aria-label="Navegación principal">
-      <a href="#dashboard" data-view="dashboard" data-admin-only hidden>Dashboard</a>
+      <a href="#dashboard" data-view="dashboard">Dashboard</a>
       <a href="#clients" class="active" data-view="clients">Clientes</a>
       <a href="#today" data-view="today">Seguimiento <span id="today-badge" class="nav-badge" hidden></span></a>
       <a href="#appointments" data-view="appointments">Citas</a>
-      <a href="#analysis" data-view="analysis">Análisis</a>
       <a href="#kpis" data-view="kpis">Indicadores</a>
       <a href="#movements" data-view="movements">Movimientos</a>
       <a href="#locations" data-view="locations" data-admin-only>Ubicaciones</a>
@@ -96,8 +95,8 @@
     </section>
  
     <section id="seller-location-panel" class="location-share" data-seller-only hidden data-page="clients">
-      <div><p class="eyebrow">Ubicación de trabajo</p><h2>Compartir mi ubicación</h2><p id="location-status" class="muted">La ubicación solo se comparte cuando tú la activas.</p></div>
-      <div class="location-actions"><button id="start-location" class="button button-primary" type="button">Activar ubicación</button><button id="stop-location" class="button button-quiet" type="button" hidden>Detener</button></div>
+      <div><p class="eyebrow">Ubicación de trabajo</p><h2>Registro de ubicación</h2><p id="location-status" class="muted">Al iniciar sesión se solicitará permiso para registrar la ubicación.</p></div>
+      <div class="location-actions"><button id="start-location" class="button button-primary" type="button">Reintentar ubicación</button><button id="stop-location" class="button button-quiet" type="button" hidden>Detener</button></div>
     </section>
  
     <section class="summary" aria-label="Resumen" data-page="clients">
@@ -117,13 +116,13 @@
     </nav>
     <section id="today-page" class="today-page" data-page="today" hidden></section>
     <section id="appointments-page" class="appointments-page" data-page="appointments" hidden></section>
-    <section id="analysis-page" class="analysis-page" data-page="analysis" hidden></section>
     <section id="dashboard-page" class="dashboard-page" data-page="dashboard" hidden></section>
     <section id="kpis-page" class="kpis-page" data-page="kpis" hidden></section>
     <section id="locations-page" class="locations-page" data-page="locations" hidden></section>
     <section id="audit-page" class="audit-page" data-page="audit" hidden></section>
     <section id="users-page" class="users-page" data-page="users" hidden></section>
     <section id="movements-page" class="movements-page" data-page="movements" hidden></section>
+    <div id="analysis-render-target" hidden></div>
     <p class="local-note"><span aria-hidden="true">●</span> Datos protegidos en la base de datos del sistema</p>
   </main>
  
@@ -140,9 +139,6 @@
         <div class="form-grid"><label>Medio de contacto<select name="preferredContact"><option value="">Sin especificar</option><option value="call">Llamada</option><option value="whatsapp">WhatsApp</option><option value="email">Correo electrónico</option><option value="visit">Visita</option><option value="facebook">Facebook</option><option value="linkedin">LinkedIn</option><option value="tiktok">TikTok</option><option value="instagram">Instagram</option></select></label><label>Teléfono de contacto<input name="contactPhone" type="tel" maxlength="25" placeholder="Teléfono o celular"></label></div>
         <div class="form-grid"><label>Correo de contacto<input name="email" type="email" maxlength="120" placeholder="contacto@empresa.com"></label><label>Número de la empresa<input name="companyPhone" type="tel" maxlength="25" placeholder="Teléfono general"></label></div>
         <label>Ubicación de la empresa<input name="companyLocation" maxlength="180" placeholder="Ciudad, estado o dirección"></label>
-        <label>Etapa de negociación<select name="stage" id="client-stage"><option value="new">Nuevo</option><option value="negotiation">En negociación</option><option value="quoted">Cotizado</option><option value="won">Ganado</option><option value="lost">Perdido</option></select></label>
-        <label id="new-won-value-field" hidden>Importe real vendido (MXN)<input name="wonValue" type="number" min="0" step="1" placeholder="Importe confirmado del pedido"></label>
-        <label id="new-lost-reason-field" hidden>Motivo de pérdida<input name="lostReason" maxlength="100" placeholder="Ej. Precio o tiempo de entrega"></label>
       </section>
       <section class="client-form-step" data-form-step="1" hidden>
         <h3 class="form-section-title">Checklist para cotizar</h3>
@@ -160,6 +156,9 @@
       </section>
       <section class="client-form-step" data-form-step="2" hidden>
         <h3 class="form-section-title">Pipeline comercial</h3>
+        <label>Etapa de negociación<select name="stage" id="client-stage"><option value="new">Nuevo</option><option value="negotiation">En negociación</option><option value="quoted">Cotizado</option><option value="won">Ganado</option><option value="lost">Perdido</option></select></label>
+        <label id="new-won-value-field" hidden>Importe real vendido (MXN)<input name="wonValue" type="number" min="0" step="1" placeholder="Importe confirmado del pedido"></label>
+        <label id="new-lost-reason-field" hidden>Motivo de pérdida<input name="lostReason" maxlength="100" placeholder="Ej. Precio o tiempo de entrega"></label>
         <div class="form-grid"><label>Tipo de oportunidad<input name="opportunityType" maxlength="80" placeholder="Ej. Cliente nuevo"></label><label>Industria<input name="industry" maxlength="80"></label></div>
         <label>Producto / medida<input name="productMeasure" maxlength="120"></label>
         <div class="form-grid"><label>Valor de oportunidad (MXN)<input name="value" type="number" min="0" step="1" placeholder="0"></label><label>Probabilidad (%)<input name="probability" type="number" min="0" max="100" step="1" value="0"></label></div>
@@ -258,7 +257,7 @@
           <option value="Otro">Otro</option>
         </select>
       </label>
-      <p class="field-help">En Análisis puedes consultar los motivos de pérdida y su impacto.</p>
+      <p class="field-help">En Dashboard puedes consultar los motivos de pérdida y su impacto.</p>
       <div class="dialog-actions"><button type="button" class="button button-quiet" id="lost-cancel">Cancelar</button><button class="button button-primary" type="submit">Marcar como perdido</button></div>
     </form>
   </dialog>

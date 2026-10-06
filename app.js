@@ -459,7 +459,7 @@ function openAppointmentResult(id) {
   document.querySelector('#appointment-result-dialog').showModal();
 }
 
-async function showAnalysis() {
+async function showAnalysis(appendToDashboard = false) {
   if (!analysisFilters.from) analysisFilters.from = `${todayIso().slice(0, 7)}-01`;
   if (!analysisFilters.to) analysisFilters.to = todayIso();
   const data = await api(`/api/analysis?${rangeQuery(analysisFilters)}`);
@@ -530,10 +530,30 @@ async function showAnalysis() {
   }).join('');
   const scope = currentUser.role === 'admin' ? 'Todos los vendedores' : 'Tus prospectos';
   const advanceNarrative = advanced ? `${advanced} oportunidad(es) avanzaron tras una cita.` : 'Aún no hay avances de etapa registrados.';
-  document.querySelector('#analysis-page').innerHTML = `<div class="page-heading"><div><p class="eyebrow">Rendimiento / Decisiones comerciales</p><h1>Análisis de seguimiento</h1><p class="muted">Citas, resultados y cambios de etapa · ${scope}</p></div>${rangeControls('analysis', analysisFilters)}</div><section class="analysis-metrics">${metrics.map(metric => `<article class="analysis-metric ${metric.tone ? `analysis-${metric.tone}` : ''}"><span>${metric.label}</span><strong>${metric.value}</strong><small>${metric.detail}</small></article>`).join('')}</section><div class="analysis-chart-grid"><section class="data-panel analysis-activity-chart"><div class="panel-heading"><div><h2>Actividad en el periodo</h2><span>Registro de citas por fecha</span></div><div class="analysis-chart-legend"><span><i class="legend-scheduled"></i>Agendadas</span><span><i class="legend-completed"></i>Realizadas</span><span><i class="legend-rescheduled"></i>Reprogramadas</span><span><i class="legend-canceled"></i>Canceladas</span></div></div>${data.events.length ? `<div class="analysis-bar-chart" role="img" aria-label="Actividad de citas agrupada en ocho intervalos del periodo">${activityBars}</div>` : '<p class="empty-state">No hay actividad de citas en este periodo.</p>'}</section><section class="data-panel analysis-outcome-chart"><div class="panel-heading"><div><h2>Resultado de citas</h2><span>Distribución del periodo</span></div></div><div class="analysis-outcome-layout"><div class="analysis-donut" role="img" aria-label="${resultTotal} citas consideradas" style="--donut-chart:${resultGradient}"><div><strong>${resultTotal}</strong><span>citas</span></div></div><div class="analysis-outcome-legend">${resultLegend}</div></div></section></div><div class="analysis-grid"><section class="data-panel analysis-pipeline"><div class="panel-heading"><div><h2>Pipeline actual</h2><span>Oportunidades y valor por etapa</span></div></div>${stageRows}</section><section class="data-panel analysis-insight"><p class="eyebrow">Lectura del periodo</p><h2>${advanceNarrative}</h2><p>${completed ? `${completed} de ${Number(summary.scheduled || 0)} citas programadas terminaron realizadas. ${Number(summary.stayed || 0)} oportunidad(es) continuaron en la misma etapa.` : 'Registra el resultado de las reuniones para identificar qué oportunidades avanzan.'}</p><button class="button button-quiet" id="analysis-open-appointments" type="button">Ver agenda de citas</button></section></div><details class="data-panel analysis-events"><summary><span><strong>Historial detallado</strong><small>${data.events.length} eventos · máximo 300 por consulta</small></span><span class="analysis-details-icon" aria-hidden="true">⌄</span></summary><div class="audit-table"><table><thead><tr><th>Registrado</th><th>Fecha de cita</th><th>Prospecto / ejecutivo</th><th>Resultado</th><th>Etapa</th><th>Acuerdos y próxima acción</th></tr></thead><tbody>${eventRows}</tbody></table>${eventRows ? '' : '<p class="empty-state">No hay citas ni resultados en este periodo.</p>'}</div></details>`;
-  bindRange('analysis', analysisFilters, showAnalysis);
-  document.querySelector('#analysis-open-appointments').addEventListener('click', () => showView('appointments'));
-  const analysisStagesTitle = document.querySelector('#analysis-page .analysis-pipeline h2');
+  const analysisTarget = document.querySelector('#analysis-render-target');
+  analysisTarget.innerHTML = `<div class="page-heading"><div><p class="eyebrow">Rendimiento / Decisiones comerciales</p><h1>Análisis de seguimiento</h1><p class="muted">Citas, resultados y cambios de etapa · ${scope}</p></div>${rangeControls('analysis', analysisFilters)}</div><section class="analysis-metrics">${metrics.map(metric => `<article class="analysis-metric ${metric.tone ? `analysis-${metric.tone}` : ''}"><span>${metric.label}</span><strong>${metric.value}</strong><small>${metric.detail}</small></article>`).join('')}</section><div class="analysis-chart-grid"><section class="data-panel analysis-activity-chart"><div class="panel-heading"><div><h2>Actividad en el periodo</h2><span>Registro de citas por fecha</span></div><div class="analysis-chart-legend"><span><i class="legend-scheduled"></i>Agendadas</span><span><i class="legend-completed"></i>Realizadas</span><span><i class="legend-rescheduled"></i>Reprogramadas</span><span><i class="legend-canceled"></i>Canceladas</span></div></div>${data.events.length ? `<div class="analysis-bar-chart" role="img" aria-label="Actividad de citas agrupada en ocho intervalos del periodo">${activityBars}</div>` : '<p class="empty-state">No hay actividad de citas en este periodo.</p>'}</section><section class="data-panel analysis-outcome-chart"><div class="panel-heading"><div><h2>Resultado de citas</h2><span>Distribución del periodo</span></div></div><div class="analysis-outcome-layout"><div class="analysis-donut" role="img" aria-label="${resultTotal} citas consideradas" style="--donut-chart:${resultGradient}"><div><strong>${resultTotal}</strong><span>citas</span></div></div><div class="analysis-outcome-legend">${resultLegend}</div></div></section></div><div class="analysis-grid"><section class="data-panel analysis-pipeline"><div class="panel-heading"><div><h2>Pipeline actual</h2><span>Oportunidades y valor por etapa</span></div></div>${stageRows}</section><section class="data-panel analysis-insight"><p class="eyebrow">Lectura del periodo</p><h2>${advanceNarrative}</h2><p>${completed ? `${completed} de ${Number(summary.scheduled || 0)} citas programadas terminaron realizadas. ${Number(summary.stayed || 0)} oportunidad(es) continuaron en la misma etapa.` : 'Registra el resultado de las reuniones para identificar qué oportunidades avanzan.'}</p><button class="button button-quiet" id="analysis-open-appointments" type="button">Ver agenda de citas</button></section></div><details class="data-panel analysis-events"><summary><span><strong>Historial detallado</strong><small>${data.events.length} eventos · máximo 300 por consulta</small></span><span class="analysis-details-icon" aria-hidden="true">⌄</span></summary><div class="audit-table"><table><thead><tr><th>Registrado</th><th>Fecha de cita</th><th>Prospecto / ejecutivo</th><th>Resultado</th><th>Etapa</th><th>Acuerdos y próxima acción</th></tr></thead><tbody>${eventRows}</tbody></table>${eventRows ? '' : '<p class="empty-state">No hay citas ni resultados en este periodo.</p>'}</div></details>`;
+  const dashboard = document.querySelector('#dashboard-page');
+  const analysisPanel = document.createElement('section');
+  analysisPanel.id = 'dashboard-analysis';
+  analysisPanel.className = 'dashboard-analysis';
+  analysisPanel.innerHTML = analysisTarget.innerHTML;
+  analysisTarget.replaceChildren();
+  const heading = analysisPanel.querySelector('.page-heading');
+  if (appendToDashboard) {
+    const title = document.createElement('h2');
+    title.textContent = 'Análisis de seguimiento';
+    heading.querySelector('h1').replaceWith(title);
+    heading.className = 'dashboard-section-heading';
+    dashboard.querySelector('#dashboard-analysis')?.remove();
+    dashboard.append(analysisPanel);
+  } else {
+    heading.querySelector('h1').textContent = 'Dashboard de seguimiento';
+    heading.querySelector('.eyebrow').textContent = 'Rendimiento / Decisiones comerciales';
+    dashboard.replaceChildren(analysisPanel);
+  }
+  bindRange('analysis', analysisFilters, () => showAnalysis(appendToDashboard));
+  analysisPanel.querySelector('#analysis-open-appointments').addEventListener('click', () => showView('appointments'));
+  const analysisStagesTitle = analysisPanel.querySelector('.analysis-pipeline h2');
   if (analysisStagesTitle) analysisStagesTitle.textContent = 'Oportunidades por etapa';
 }
 
@@ -750,12 +770,12 @@ async function saveClientProgress(complete) {
       }
     }
     if (payload.stage === 'won' && payload.won_value == null) {
-      showClientFormStep(0);
+      showClientFormStep(2);
       clientForm.elements.wonValue.focus();
       return alert('Captura el importe real vendido para finalizar como Ganado.');
     }
     if (payload.stage === 'lost' && !String(payload.lost_reason || '').trim()) {
-      showClientFormStep(0);
+      showClientFormStep(2);
       clientForm.elements.lostReason.focus();
       return alert('Indica el motivo de pérdida para finalizar como Perdido.');
     }
@@ -827,7 +847,7 @@ document.querySelector('#appointment-result-form').addEventListener('submit', as
     event.target.closest('dialog').close();
     await loadClients();
     if (activeView === 'appointments') await showAppointments();
-    if (activeView === 'analysis') await showAnalysis();
+    if (activeView === 'dashboard') await showDashboard();
   } catch (error) { alert(error.message); }
 });
 document.querySelector('#activity-form').addEventListener('submit', async event => {
@@ -1074,6 +1094,10 @@ function bindRange(prefix, filters, reload) {
 
 // ---------- Panel gerencial ----------
 async function showDashboard() {
+  if (currentUser?.role !== 'admin') {
+    await showAnalysis(false);
+    return;
+  }
   const year = Number(document.querySelector('#dashboard-year')?.value || new Date().getFullYear());
   const data = await api(`/api/admin/dashboard?year=${year}`);
   const percent = value => `${Number(value || 0).toLocaleString('es-MX', { maximumFractionDigits: 1 })}%`;
@@ -1129,6 +1153,7 @@ async function showDashboard() {
       await showDashboard();
     } catch (error) { message.textContent = error.message; }
   });
+  await showAnalysis(true);
 }
 
 // ---------- Ubicaciones ----------
@@ -1188,7 +1213,7 @@ function startLocationSharing() {
   if (!navigator.geolocation) return setLocationStatus('Este dispositivo no permite obtener ubicación.');
   if (!window.isSecureContext) return setLocationStatus('El navegador bloquea la ubicación en HTTP. Abre el CRM desde https:// o, en la laptop servidor, desde http://localhost:8000.');
   if (locationWatchId !== null) navigator.geolocation.clearWatch(locationWatchId);
-  setLocationStatus('Solicitando permiso de ubicación...');
+  setLocationStatus('Solicitando permiso de ubicación...', true);
   locationWatchId = navigator.geolocation.watchPosition(position => sendLocation(position).catch(error => setLocationStatus(error.message)), error => setLocationStatus(`No se pudo obtener la ubicación: ${error.message}`), { enableHighAccuracy: true, maximumAge: 30000, timeout: 20000 });
 }
 
@@ -1210,8 +1235,13 @@ async function setupLocationPanel() {
   if (currentUser?.role !== 'seller') return;
   document.querySelector('#start-location').addEventListener('click', startLocationSharing);
   document.querySelector('#stop-location').addEventListener('click', () => stopLocationSharing().catch(error => setLocationStatus(error.message)));
-  const data = await api('/api/location');
-  if (data.location?.sharing) setLocationStatus(formatLocationStatus(data.location), true);
+  try {
+    const data = await api('/api/location');
+    if (data.location) setLocationStatus(formatLocationStatus(data.location), Boolean(data.location.sharing));
+  } catch (error) {
+    setLocationStatus(`No se pudo consultar la última ubicación: ${error.message}`);
+  }
+  startLocationSharing();
 }
 
 // ---------- Movimientos y auditoría ----------
@@ -1252,15 +1282,15 @@ async function showUsers() {
 
 // ---------- Navegación ----------
 async function showView(view) {
+  if (view === 'analysis') view = 'dashboard';
   if (view === activeView) return;
   activeView = view;
-  document.querySelectorAll('[data-page]').forEach(element => { element.hidden = element.dataset.page !== view || (element.id === 'dashboard-page' && currentUser?.role !== 'admin'); });
+  document.querySelectorAll('[data-page]').forEach(element => { element.hidden = element.dataset.page !== view; });
   applyRoleVisibility(); // oculta el panel de ubicación al admin y fuera de Clientes
   document.querySelectorAll('[data-view]').forEach(link => link.classList.toggle('active', link.dataset.view === view));
   if (view === 'clients' || view === 'today') await loadClients(); // datos frescos; en "today" también dibuja la vista
   if (view === 'dashboard') await showDashboard();
   if (view === 'appointments') await showAppointments();
-  if (view === 'analysis') await showAnalysis();
   if (view === 'kpis') await showKpis();
   if (view === 'locations') await showLocations();
   if (view === 'movements') await showMovements();
@@ -1271,7 +1301,12 @@ async function showView(view) {
 // La navegación se maneja sin recargar la página para conservar una experiencia
 // rápida incluso cuando la laptop funciona como servidor.
 document.querySelectorAll('[data-view]').forEach(link => link.addEventListener('click', async event => { event.preventDefault(); await showView(link.dataset.view); }));
-document.querySelector('#logout').addEventListener('click', async () => { await api('/api/logout', { method: 'POST' }); location.reload(); });
+document.querySelector('#logout').addEventListener('click', async () => {
+  if (locationWatchId !== null && navigator.geolocation) navigator.geolocation.clearWatch(locationWatchId);
+  locationWatchId = null;
+  await api('/api/logout', { method: 'POST' });
+  location.reload();
+});
 document.querySelector('#account-button').addEventListener('click', () => { document.querySelector('#password-message').hidden = true; document.querySelector('#password-form').reset(); document.querySelector('#account-dialog').showModal(); });
 document.querySelector('#close-account').addEventListener('click', () => document.querySelector('#account-dialog').close());
 document.querySelector('#cancel-account').addEventListener('click', () => document.querySelector('#account-dialog').close());

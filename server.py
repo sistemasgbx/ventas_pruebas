@@ -1119,6 +1119,9 @@ class Handler(BaseHTTPRequestHandler):
             return
         if path == '/api/logout':
             token = self.headers.get('Cookie', '').replace('grubox_session=', '').split(';')[0]
+            if user['role'] == 'seller':
+                with db() as connection:
+                    connection.execute('UPDATE seller_locations SET sharing = 0 WHERE user_id = ?', (user['id'],))
             SESSIONS.pop(token, None)
             return self.send_json({'ok': True}, headers={'Set-Cookie': 'grubox_session=; Max-Age=0; Path=/; HttpOnly; Secure'})
         if path == '/api/location':

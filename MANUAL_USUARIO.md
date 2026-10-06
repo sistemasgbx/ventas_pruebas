@@ -6,7 +6,7 @@ Este manual te acompaña en el uso diario del CRM. La idea es sencilla: guardar 
 
 1. La persona responsable inicia el CRM en la computadora que funciona como servidor.
 2. Abre en tu navegador la dirección que aparece en la ventana del servidor. Si estás usando esa misma computadora, también puedes entrar desde `https://localhost:8000`.
-3. Escribe el usuario y la contraseña que te asignaron. Marca la casilla de aviso de ubicación para continuar.
+3. Escribe el usuario y la contraseña que te asignaron. Si eres vendedor, marca la casilla de aviso de ubicación; al iniciar sesión el navegador pedirá permiso para registrar tu ubicación.
 
 La primera vez, el navegador puede mostrar una advertencia del certificado local. En el uso dentro de la red de la empresa, continúa al sitio siguiendo las indicaciones de tu navegador. Si no puedes abrir la página, avisa a la persona administradora; el servidor debe estar encendido y ambos dispositivos deben estar en la misma red.
 
@@ -26,7 +26,7 @@ La barra superior contiene las secciones principales:
 - **Clientes:** prospectos, etapas de venta, búsqueda y resumen de oportunidades.
 - **Seguimiento:** pendientes vencidos, para hoy, próximos y sin fecha.
 - **Citas:** reuniones programadas y registro de sus resultados.
-- **Análisis:** actividad de citas y avance comercial del periodo.
+- **Dashboard:** resultados anuales y análisis de citas y avance comercial del periodo.
 - **Indicadores:** actividad comercial de la semana seleccionada.
 - **Movimientos:** cambios de etapa y seguimientos registrados.
 - **Ubicaciones, Auditoría y Usuarios:** herramientas disponibles solo para administración.
@@ -40,9 +40,9 @@ La gráfica mensual distribuye la meta anual en doce partes iguales y coloca las
 ## 3. Registrar un prospecto
 
 1. Entra en **Clientes** y selecciona **Nuevo prospecto**.
-2. En **Datos de la empresa**, captura el nombre de la empresa, la persona y el medio de contacto. Puedes elegir llamada, WhatsApp, correo, visita o redes sociales (Facebook, LinkedIn, TikTok e Instagram). Agrega los teléfonos, el correo, la ubicación y la etapa de negociación.
+2. En **Datos de la empresa**, captura el nombre de la empresa, la persona y el medio de contacto. Puedes elegir llamada, WhatsApp, correo, visita o redes sociales (Facebook, LinkedIn, TikTok e Instagram). Agrega los teléfonos, el correo y la ubicación.
 3. En **Checklist para cotizar**, registra los datos de entrega y las especificaciones del producto. Indica si recibiste una muestra física y un plano; esos dos campos son obligatorios. Completa medidas, flauta, tintas, liner, tarima, volumen, periodicidad, forma de pago, altura de tarima y precio objetivo cuando tengas la información.
-4. En **Pipeline comercial**, captura tipo de oportunidad, industria, producto o medida, valor, probabilidad, fecha estimada de cierre, siguiente acción y observaciones. El forecast ponderado se calcula automáticamente como valor por probabilidad. La fecha de registro y el vendedor se guardan con la oportunidad; el estado se deriva de la etapa comercial.
+4. En **Pipeline comercial**, selecciona la etapa de negociación una sola vez; el estado del pipeline se actualiza automáticamente a partir de esa selección. Si eliges **Ganado**, captura el importe real vendido; si eliges **Perdido**, indica el motivo. Completa tipo de oportunidad, industria, producto o medida, valor, probabilidad, fecha estimada de cierre, siguiente acción y observaciones. El forecast ponderado se calcula automáticamente como valor por probabilidad. La fecha de registro y el vendedor se guardan con la oportunidad.
 5. Puedes guardar un borrador en los pasos **Empresa** o **Checklist** con **Guardar avance**; basta con haber capturado al menos un dato. El borrador aparecerá en el tablero, marcado con el paso pendiente, y puedes retomarlo con **Continuar captura**. Al terminar el paso Pipeline, selecciona **Guardar oportunidad** para completar el registro.
 
 El **valor de oportunidad** es una previsión, no una venta confirmada. Si registras el prospecto directamente como **Ganado**, el sistema también pedirá el importe real vendido; si lo registras como **Perdido**, pedirá el motivo de pérdida.
@@ -104,7 +104,7 @@ Usa **Registrar actividad** para contabilizar llamadas o correos de prospección
 
 En **Indicadores**, elige la semana que quieres consultar. Verás los registros de actividad, montos cotizados y vendidos, citas y conversión de prospectos cotizados a ganados. Las metas que aparecen son referencias sugeridas, no una garantía de resultado. Los indicadores dependen de que las actividades y cierres se registren correctamente.
 
-En **Análisis** puedes consultar las citas programadas, realizadas, reprogramadas y canceladas, además del avance de etapa. Ajusta las fechas para revisar otro periodo. El administrador también ve el resumen gerencial del equipo.
+En **Dashboard** puedes consultar las citas programadas, realizadas, reprogramadas y canceladas, además del avance de etapa. Ajusta las fechas para revisar otro periodo. El administrador también ve el resumen gerencial del equipo y la gráfica anual de ventas.
 
 ## 8. Funciones de administración
 
@@ -119,9 +119,9 @@ Cada usuario puede cambiar su propia contraseña desde **Mi cuenta**. Se pide la
 
 ## 9. Compartir ubicación
 
-La ubicación solo se comparte si el vendedor la activa y concede permiso al navegador. En **Clientes**, utiliza **Activar ubicación** para iniciar y **Detener** para finalizar. El administrador podrá ver la última señal recibida y el historial.
+Al iniciar sesión, la cuenta de vendedor solicita permiso al navegador y comienza a registrar la ubicación automáticamente. En **Clientes** puedes revisar el estado y utilizar **Detener** para dejar de compartirla, o **Reintentar ubicación** si el permiso se rechazó o no se pudo obtener señal. Al cerrar sesión, el uso compartido se detiene. El administrador podrá ver la última señal recibida y el historial.
 
-El navegador debe permitir la ubicación y el CRM debe abrirse por HTTPS (o desde `localhost` en la computadora servidor). Mantén la página abierta: el CRM no puede garantizar el envío de ubicación si cierras el navegador o el teléfono lo suspende. Si el permiso se denegó, habilítalo en la configuración del navegador y vuelve a intentarlo.
+El navegador debe permitir la ubicación y el CRM debe abrirse por HTTPS (o desde `localhost` en la computadora servidor). Mantén la página abierta durante la sesión: el CRM no puede garantizar el envío de ubicación si cierras el navegador o el teléfono lo suspende. Si el permiso se denegó, habilítalo en la configuración del navegador y selecciona **Reintentar ubicación**.
 
 La ubicación es un dato personal. Compártela solo conforme a las reglas y el aviso de privacidad de la empresa.
 
