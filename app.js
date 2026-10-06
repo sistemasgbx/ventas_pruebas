@@ -235,7 +235,7 @@ function render() {
   const visible = getVisibleClients();
   if (clientLayout === 'list') {
     pipeline.classList.add('prospect-list');
-    pipeline.innerHTML = `<div class="audit-table"><table><thead><tr><th>Prospecto</th><th>Planta</th><th>Código MP</th><th>OC</th><th>Piezas / Kg</th><th>UM</th><th>Requerimiento planeado</th><th>Fecha de entrega</th><th>Proveedor</th><th>Etapa</th><th>Acciones</th></tr></thead><tbody>${visible.map(client => `<tr><td><strong>${escapeHtml(client.company)}</strong><span class="table-subtext">${escapeHtml(client.contact)} · ${escapeHtml(client.owner_name || '')}</span></td><td>${escapeHtml(client.plant || '')}</td><td>${escapeHtml(client.material_code || '')}</td><td>${escapeHtml(client.purchase_order || '')}</td><td>${client.pieces_per_kg == null ? '' : escapeHtml(Number(client.pieces_per_kg).toLocaleString('es-MX'))}</td><td>${escapeHtml(client.unit_of_measure || '')}</td><td>${escapeHtml(client.planned_requirement || '')}</td><td>${client.expected_delivery_date || client.requested_delivery_date ? escapeHtml(formatCalendarDate(client.expected_delivery_date || client.requested_delivery_date)) : ''}</td><td>${escapeHtml(client.supplier || '')}</td><td>${escapeHtml(stageLabel(client.stage))}</td><td><div class="list-actions"><button class="button button-quiet follow-up-button" data-id="${client.id}" type="button" aria-label="Seguimiento de ${escapeHtml(client.company)}">◷</button><button class="button button-quiet edit-button" data-id="${client.id}" type="button">Editar</button></div></td></tr>`).join('') || '<tr><td colspan="11">Sin registros</td></tr>'}</tbody></table></div>`;
+    pipeline.innerHTML = `<div class="audit-table"><table><thead><tr><th>Fecha</th><th>Vendedor</th><th>Cliente / prospecto</th><th>Tipo de oportunidad</th><th>Industria</th><th>Producto / medida</th><th>Valor oportunidad</th><th>Probabilidad</th><th>Forecast ponderado</th><th>Etapa</th><th>Fecha estimada cierre</th><th>Motivo / siguiente acción</th><th>Estado</th><th>Observaciones</th><th>Planta</th><th>Código MP</th><th>OC</th><th>Piezas / Kg</th><th>UM</th><th>Requerimiento planeado</th><th>Fecha de entrega</th><th>Proveedor</th><th>Acciones</th></tr></thead><tbody>${visible.map(client => `<tr><td>${escapeHtml(client.created_at || '')}</td><td>${escapeHtml(client.owner_name || '')}</td><td><strong>${escapeHtml(client.company)}</strong><span class="table-subtext">${escapeHtml(client.contact)}</span></td><td>${escapeHtml(client.opportunity_type || '')}</td><td>${escapeHtml(client.industry || '')}</td><td>${escapeHtml(client.product_measure || '')}</td><td>${money.format(client.value)}</td><td>${Number(client.probability || 0)}%</td><td>${money.format(client.weighted_forecast || 0)}</td><td>${escapeHtml(stageLabel(client.stage))}</td><td>${client.estimated_close_date ? escapeHtml(formatCalendarDate(client.estimated_close_date)) : ''}</td><td>${escapeHtml(client.next_action || '')}</td><td>${client.stage === 'won' ? 'Ganada' : client.stage === 'lost' ? 'Perdida' : 'Activa'}</td><td>${escapeHtml(client.pinned_note || '')}</td><td>${escapeHtml(client.plant || '')}</td><td>${escapeHtml(client.material_code || '')}</td><td>${escapeHtml(client.purchase_order || '')}</td><td>${client.pieces_per_kg == null ? '' : escapeHtml(Number(client.pieces_per_kg).toLocaleString('es-MX'))}</td><td>${escapeHtml(client.unit_of_measure || '')}</td><td>${escapeHtml(client.planned_requirement || '')}</td><td>${client.expected_delivery_date || client.requested_delivery_date ? escapeHtml(formatCalendarDate(client.expected_delivery_date || client.requested_delivery_date)) : ''}</td><td>${escapeHtml(client.supplier || '')}</td><td><div class="list-actions"><button class="button button-quiet follow-up-button" data-id="${client.id}" type="button" aria-label="Seguimiento de ${escapeHtml(client.company)}">◷</button><button class="button button-quiet edit-button" data-id="${client.id}" type="button">Editar</button></div></td></tr>`).join('') || '<tr><td colspan="23">Sin registros</td></tr>'}</tbody></table></div>`;
   } else {
     pipeline.classList.remove('prospect-list');
     pipeline.innerHTML = stages.map(stage => {
@@ -268,14 +268,23 @@ function renderCard(client) {
   const call = client.call_date || client.call_time ? `Llamada: ${formatScheduledCall(client.call_date, client.call_time)}` : 'Sin llamada programada';
   const movement = client.last_to_stage ? `${client.last_from_stage ? `${stageLabel(client.last_from_stage)} → ` : ''}${stageLabel(client.last_to_stage)}` : 'Sin movimientos registrados';
   const contactData = [client.contact_phone, client.email, client.company_phone].filter(Boolean).map(escapeHtml).join(' · ');
-  const contactLabels = { call: 'Llamada', whatsapp: 'WhatsApp', email: 'Correo electrónico', visit: 'Visita' };
+  const contactLabels = { call: 'Llamada', whatsapp: 'WhatsApp', email: 'Correo electrónico', visit: 'Visita', facebook: 'Facebook', linkedin: 'LinkedIn', tiktok: 'TikTok', instagram: 'Instagram' };
   const prospectDetails = [
     client.internal_code ? `Código: ${client.internal_code}` : '',
     client.preferred_contact ? `Contacto: ${contactLabels[client.preferred_contact] || client.preferred_contact}` : '',
+    client.company_location ? `Ubicación: ${client.company_location}` : '',
     client.sample_provided === null || client.sample_provided === undefined ? '' : `Muestra: ${Number(client.sample_provided) ? 'Recibida' : 'No recibida'}`,
     client.drawing_provided === null || client.drawing_provided === undefined ? '' : `Plano: ${Number(client.drawing_provided) ? 'Recibido' : 'No recibido'}`,
     client.requested_delivery_date ? `Entrega solicitada: ${formatCalendarDate(client.requested_delivery_date)}` : '',
     client.expected_delivery_date ? `Entrega prevista: ${formatCalendarDate(client.expected_delivery_date)}` : ''
+  ].filter(Boolean).map(escapeHtml).join(' · ');
+  const pipelineDetails = [
+    client.opportunity_type ? `Tipo: ${client.opportunity_type}` : '',
+    client.industry ? `Industria: ${client.industry}` : '',
+    client.product_measure ? `Producto / medida: ${client.product_measure}` : '',
+    client.probability ? `Probabilidad: ${client.probability}%` : '',
+    client.weighted_forecast ? `Forecast ponderado: ${money.format(client.weighted_forecast)}` : '',
+    client.estimated_close_date ? `Cierre estimado: ${formatCalendarDate(client.estimated_close_date)}` : ''
   ].filter(Boolean).map(escapeHtml).join(' · ');
   const status = followUpStatus(client);
   const idle = isOpen(client) ? daysSinceMovement(client) : null;
@@ -296,6 +305,7 @@ function renderCard(client) {
     <p class="box-type">${escapeHtml(client.box_type || 'Tipo de caja pendiente')}</p>
     <p class="client-value">${money.format(shownValue)}</p>
     <p class="quantity-info">Cantidad estimada: ${Number(client.estimated_quantity || 0).toLocaleString('es-MX')}</p>
+    ${pipelineDetails ? `<p class="prospect-details">${pipelineDetails}</p>` : ''}
     <p class="next-action">${escapeHtml(client.next_action)}</p>
     ${client.pinned_note ? `<p class="pinned-note">📌 ${escapeHtml(client.pinned_note)}</p>` : ''}${client.stage === 'lost' && client.lost_reason ? `<p class="lost-reason">Motivo: ${escapeHtml(client.lost_reason)}</p>` : ''}
     <div class="card-record">
@@ -640,14 +650,14 @@ document.querySelector('#today-page').addEventListener('click', async event => {
 
 // ---------- Exportar CSV ----------
 async function exportCsv() {
-  const cols = [['company', 'Empresa'], ['contact', 'Contacto'], ['internal_code', 'Código'], ['plant', 'Planta'], ['material_code', 'Código MP'], ['purchase_order', 'OC'], ['pieces_per_kg', 'Piezas / Kg'], ['unit_of_measure', 'UM'], ['planned_requirement', 'Requerimiento planeado'], ['expected_delivery_date', 'Fecha de entrega'], ['supplier', 'Proveedor'], ['contact_phone', 'Teléfono'], ['email', 'Correo'], ['box_type', 'Tipo de caja'], ['estimated_quantity', 'Cantidad'], ['value', 'Valor estimado'], ['won_value', 'Importe vendido'], ['stage', 'Etapa'], ['lost_reason', 'Motivo de pérdida'], ['owner_name', 'Vendedor'], ['call_date', 'Próximo contacto'], ['next_action', 'Próxima acción']];
+  const cols = [['created_at', 'Fecha'], ['owner_name', 'Vendedor'], ['company', 'Empresa'], ['contact', 'Contacto'], ['contact_phone', 'Teléfono'], ['email', 'Correo'], ['company_phone', 'Teléfono empresa'], ['company_location', 'Ubicación empresa'], ['preferred_contact', 'Medio de contacto'], ['opportunity_type', 'Tipo de oportunidad'], ['industry', 'Industria'], ['product_measure', 'Producto / medida'], ['value', 'Valor de oportunidad'], ['probability', 'Probabilidad (%)'], ['weighted_forecast', 'Forecast ponderado'], ['stage', 'Etapa'], ['estimated_close_date', 'Fecha estimada de cierre'], ['next_action', 'Motivo / siguiente acción'], ['status', 'Estado'], ['pinned_note', 'Observaciones'], ['delivery_address', 'Dirección de entrega'], ['delivery_conditions', 'Condiciones de entrega'], ['quote_specifications', 'Especificaciones a cotizar'], ['flute', 'Flauta'], ['ink_count', 'Número de tintas'], ['internal_dimensions', 'Medidas internas'], ['external_dimensions', 'Medidas externas'], ['sample_provided', 'Muestra física'], ['liner_type', 'Tipo de liner'], ['mikelman_treatment', 'Tratamiento Mikelman'], ['pallet', 'Tarima'], ['estimated_quantity', 'Volumen / piezas'], ['periodicity', 'Periodicidad'], ['payment_terms', 'Forma de pago'], ['max_pallet_height', 'Altura máxima de tarima'], ['target_price', 'Precio objetivo'], ['plant', 'Planta'], ['material_code', 'Código MP'], ['purchase_order', 'OC'], ['pieces_per_kg', 'Piezas / Kg'], ['unit_of_measure', 'UM'], ['planned_requirement', 'Requerimiento planeado'], ['supplier', 'Proveedor'], ['won_value', 'Importe vendido'], ['lost_reason', 'Motivo de pérdida'], ['call_date', 'Próximo contacto']];
   const cell = value => {
     let text = String(value ?? '');
     if (/^[=+\-@]/.test(text)) text = `'${text}`; // evita fórmulas en Excel
     return `"${text.replace(/"/g, '""')}"`;
   };
   const { items } = await fetchClientPages(true);
-  const rows = items.map(c => cols.map(([key]) => cell(key === 'stage' ? stageLabel(c.stage) : c[key])).join(','));
+  const rows = items.map(c => cols.map(([key]) => cell(key === 'stage' ? stageLabel(c.stage) : key === 'status' ? (c.stage === 'won' ? 'Ganada' : c.stage === 'lost' ? 'Perdida' : 'Activa') : key === 'sample_provided' ? (c.sample_provided == null ? '' : Number(c.sample_provided) ? 'Sí' : 'No') : c[key])).join(','));
   const csv = '\ufeff' + [cols.map(([, label]) => cell(label)).join(','), ...rows].join('\r\n');
   const link = document.createElement('a');
   link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
@@ -656,18 +666,81 @@ async function exportCsv() {
   URL.revokeObjectURL(link.href);
 }
 
-// Alta de prospectos: el navegador solo recoge el formulario; la validación y
-// la escritura definitiva ocurren en el servidor.
-document.querySelector('#client-form').addEventListener('submit', async event => {
-  event.preventDefault();
-  const form = new FormData(event.target);
-  try { await api('/api/clients', { method: 'POST', body: JSON.stringify({ company: form.get('company'), contact: form.get('contact'), contact_phone: form.get('contactPhone'), email: form.get('email'), company_phone: form.get('companyPhone'), value: Number(form.get('value')), estimated_quantity: Number(form.get('estimatedQuantity')), box_type: form.get('boxType'), next_action: form.get('nextAction'), stage: form.get('stage'), won_value: form.get('wonValue') === '' ? undefined : Number(form.get('wonValue')), call_date: form.get('callDate'), call_time: form.get('callTime'), internal_code: form.get('internalCode'), sample_provided: Number(form.get('sampleProvided')), preferred_contact: form.get('preferredContact'), drawing_provided: Number(form.get('drawingProvided')), requested_delivery_date: form.get('requestedDeliveryDate'), expected_delivery_date: form.get('expectedDeliveryDate'), plant: form.get('plant'), material_code: form.get('materialCode'), purchase_order: form.get('purchaseOrder'), pieces_per_kg: form.get('piecesPerKg') === '' ? null : Number(form.get('piecesPerKg')), unit_of_measure: form.get('unitOfMeasure'), planned_requirement: form.get('plannedRequirement'), supplier: form.get('supplier') }) }); event.target.reset(); document.querySelector('#new-won-value-field').hidden = true; document.querySelector('#client-form').elements.wonValue.required = false; document.querySelector('#client-dialog').close(); await loadClients(); } catch (error) { alert(error.message); }
+// Alta de prospectos: el navegador organiza la captura; el servidor valida y guarda.
+const clientForm = document.querySelector('#client-form');
+const clientFormSteps = [...clientForm.querySelectorAll('[data-form-step]')];
+const clientStepLabels = ['Datos de la empresa', 'Checklist para cotizar', 'Pipeline comercial'];
+let clientFormStep = 0;
+function showClientFormStep(step) {
+  clientFormStep = step;
+  clientFormSteps.forEach((section, index) => { section.hidden = index !== step; });
+  document.querySelector('#client-step-caption').textContent = `Paso ${step + 1} de 3 · ${clientStepLabels[step]}`;
+  document.querySelectorAll('.wizard-progress span').forEach((label, index) => label.classList.toggle('wizard-step-active', index === step));
+  document.querySelector('#client-step-back').hidden = step === 0;
+  document.querySelector('#client-step-next').hidden = step === clientFormSteps.length - 1;
+  document.querySelector('#client-submit').hidden = step !== clientFormSteps.length - 1;
+}
+document.querySelector('#client-step-next').addEventListener('click', () => {
+  const controls = [...clientFormSteps[clientFormStep].querySelectorAll('input, select, textarea')];
+  const invalid = controls.find(control => !control.checkValidity());
+  if (invalid) { invalid.reportValidity(); return; }
+  showClientFormStep(clientFormStep + 1);
 });
+document.querySelector('#client-step-back').addEventListener('click', () => showClientFormStep(clientFormStep - 1));
+function updateWeightedForecast() {
+  const value = Number(clientForm.elements.value.value || 0);
+  const probability = Number(clientForm.elements.probability.value || 0);
+  clientForm.elements.weightedForecast.value = (value * probability / 100).toFixed(2);
+}
+['value', 'probability'].forEach(name => clientForm.elements[name].addEventListener('input', updateWeightedForecast));
 document.querySelector('#client-stage').addEventListener('change', event => {
-  const isWon = event.target.value === 'won';
+  const stage = event.target.value;
+  const isWon = stage === 'won';
   document.querySelector('#new-won-value-field').hidden = !isWon;
-  document.querySelector('#client-form').elements.wonValue.required = isWon;
+  clientForm.elements.wonValue.required = isWon;
+  document.querySelector('#client-pipeline-status').value = isWon ? 'Ganado' : stage === 'lost' ? 'Perdido' : 'Activo';
 });
+clientForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  if (clientFormStep < clientFormSteps.length - 1) {
+    const controls = [...clientFormSteps[clientFormStep].querySelectorAll('input, select, textarea')];
+    const invalid = controls.find(control => !control.checkValidity());
+    if (invalid) invalid.reportValidity();
+    else showClientFormStep(clientFormStep + 1);
+    return;
+  }
+  if (!clientForm.reportValidity()) return;
+  const form = new FormData(clientForm);
+  const optionalNumber = name => form.get(name) === '' ? null : Number(form.get(name));
+  const payload = {
+    company: form.get('company'), contact: form.get('contact'),
+    contact_phone: form.get('contactPhone'), email: form.get('email'),
+    company_phone: form.get('companyPhone'), company_location: form.get('companyLocation'),
+    preferred_contact: form.get('preferredContact'), stage: form.get('stage'),
+    won_value: optionalNumber('wonValue'), value: Number(form.get('value')),
+    estimated_quantity: optionalNumber('estimatedQuantity') || 0,
+    box_type: form.get('boxType'), next_action: form.get('nextAction'),
+    call_date: form.get('callDate'), call_time: form.get('callTime'),
+    sample_provided: Number(form.get('sampleProvided')), drawing_provided: Number(form.get('drawingProvided')),
+    delivery_address: form.get('deliveryAddress'), delivery_conditions: form.get('deliveryConditions'),
+    quote_specifications: form.get('quoteSpecifications'), flute: form.get('flute'),
+    ink_count: optionalNumber('inkCount'), internal_dimensions: form.get('internalDimensions'),
+    external_dimensions: form.get('externalDimensions'), liner_type: form.get('linerType'),
+    mikelman_treatment: form.get('mikelmanTreatment'), pallet: form.get('pallet'),
+    periodicity: form.get('periodicity'), payment_terms: form.get('paymentTerms'),
+    max_pallet_height: form.get('maxPalletHeight'), target_price: optionalNumber('targetPrice'),
+    opportunity_type: form.get('opportunityType'), industry: form.get('industry'),
+    product_measure: form.get('productMeasure'), probability: Number(form.get('probability')),
+    estimated_close_date: form.get('estimatedCloseDate'), pinned_note: form.get('pinnedNote')
+  };
+  try {
+    await api('/api/clients', { method: 'POST', body: JSON.stringify(payload) });
+    resetClientForm();
+    document.querySelector('#client-dialog').close();
+    await loadClients();
+  } catch (error) { alert(error.message); }
+});
+showClientFormStep(0);
 document.querySelector('#sale-form').addEventListener('submit', async event => {
   event.preventDefault();
   const form = new FormData(event.target);
@@ -720,9 +793,16 @@ document.querySelector('#activity-form').addEventListener('submit', async event 
     if (activeView === 'kpis') await showKpis(document.querySelector('#kpi-week').value);
   } catch (error) { alert(error.message); }
 });
-document.querySelector('#new-client').addEventListener('click', () => document.querySelector('#client-dialog').showModal());
-document.querySelector('#close-dialog').addEventListener('click', () => { document.querySelector('#client-form').reset(); document.querySelector('#new-won-value-field').hidden = true; document.querySelector('#client-form').elements.wonValue.required = false; document.querySelector('#client-dialog').close(); });
-document.querySelector('#cancel-dialog').addEventListener('click', () => { document.querySelector('#client-form').reset(); document.querySelector('#new-won-value-field').hidden = true; document.querySelector('#client-form').elements.wonValue.required = false; document.querySelector('#client-dialog').close(); });
+document.querySelector('#new-client').addEventListener('click', () => { showClientFormStep(0); document.querySelector('#client-dialog').showModal(); });
+function resetClientForm() {
+  clientForm.reset();
+  document.querySelector('#new-won-value-field').hidden = true;
+  clientForm.elements.wonValue.required = false;
+  document.querySelector('#client-pipeline-status').value = 'Activo';
+  showClientFormStep(0);
+}
+document.querySelector('#close-dialog').addEventListener('click', () => { resetClientForm(); document.querySelector('#client-dialog').close(); });
+document.querySelector('#cancel-dialog').addEventListener('click', () => { resetClientForm(); document.querySelector('#client-dialog').close(); });
 document.querySelector('#sale-close').addEventListener('click', () => document.querySelector('#sale-dialog').close());
 document.querySelector('#sale-cancel').addEventListener('click', () => document.querySelector('#sale-dialog').close());
 document.querySelector('#new-appointment').addEventListener('click', openAppointmentDialog);
@@ -853,7 +933,7 @@ async function openEditDialog(id) {
   if (!client) return;
   const form = document.querySelector('#edit-form');
   form.elements.client_id.value = client.id;
-  ['company', 'contact', 'contact_phone', 'email', 'company_phone', 'internal_code', 'value', 'estimated_quantity', 'box_type', 'preferred_contact', 'requested_delivery_date', 'expected_delivery_date', 'pinned_note', 'plant', 'material_code', 'purchase_order', 'pieces_per_kg', 'unit_of_measure', 'planned_requirement', 'supplier']
+  ['company', 'contact', 'contact_phone', 'email', 'company_phone', 'company_location', 'internal_code', 'value', 'estimated_quantity', 'box_type', 'preferred_contact', 'requested_delivery_date', 'expected_delivery_date', 'pinned_note', 'plant', 'material_code', 'purchase_order', 'pieces_per_kg', 'unit_of_measure', 'planned_requirement', 'supplier', 'delivery_address', 'delivery_conditions', 'quote_specifications', 'flute', 'ink_count', 'internal_dimensions', 'external_dimensions', 'liner_type', 'mikelman_treatment', 'pallet', 'periodicity', 'payment_terms', 'max_pallet_height', 'target_price', 'probability', 'opportunity_type', 'industry', 'product_measure', 'estimated_close_date', 'next_action']
     .forEach(name => { form.elements[name].value = client[name] ?? ''; });
   form.elements.sample_provided.value = Number(client.sample_provided || 0);
   form.elements.drawing_provided.value = Number(client.drawing_provided || 0);

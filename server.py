@@ -294,7 +294,28 @@ def initialize_database():
                 pieces_per_kg REAL,
                 unit_of_measure TEXT,
                 planned_requirement TEXT,
-                supplier TEXT
+                supplier TEXT,
+                company_location TEXT,
+                delivery_address TEXT,
+                delivery_conditions TEXT,
+                quote_specifications TEXT,
+                flute TEXT,
+                ink_count INTEGER,
+                internal_dimensions TEXT,
+                external_dimensions TEXT,
+                liner_type TEXT,
+                mikelman_treatment TEXT,
+                pallet TEXT,
+                periodicity TEXT,
+                payment_terms TEXT,
+                max_pallet_height TEXT,
+                target_price REAL,
+                opportunity_type TEXT,
+                industry TEXT,
+                product_measure TEXT,
+                probability INTEGER NOT NULL DEFAULT 0,
+                weighted_forecast REAL NOT NULL DEFAULT 0,
+                estimated_close_date TEXT
             );
             CREATE TABLE IF NOT EXISTS client_history (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -428,6 +449,16 @@ def initialize_database():
         for column in ('plant', 'material_code', 'purchase_order', 'unit_of_measure', 'planned_requirement', 'supplier'):
             if column not in client_columns:
                 connection.execute(f'ALTER TABLE clients ADD COLUMN {column} TEXT')
+        for column in ('company_location', 'delivery_address', 'delivery_conditions', 'quote_specifications',
+                       'flute', 'internal_dimensions', 'external_dimensions', 'liner_type', 'mikelman_treatment',
+                       'pallet', 'periodicity', 'payment_terms', 'max_pallet_height', 'opportunity_type',
+                       'industry', 'product_measure', 'estimated_close_date'):
+            if column not in client_columns:
+                connection.execute(f'ALTER TABLE clients ADD COLUMN {column} TEXT')
+        for column, declaration in (('ink_count', 'INTEGER'), ('probability', 'INTEGER NOT NULL DEFAULT 0'),
+                                    ('weighted_forecast', 'REAL NOT NULL DEFAULT 0'), ('target_price', 'REAL')):
+            if column not in client_columns:
+                connection.execute(f'ALTER TABLE clients ADD COLUMN {column} {declaration}')
         if 'pieces_per_kg' not in client_columns:
             connection.execute('ALTER TABLE clients ADD COLUMN pieces_per_kg REAL')
         for column in ('lost_reason', 'pinned_note'):
@@ -626,7 +657,10 @@ class Handler(BaseHTTPRequestHandler):
                 filters.append("COALESCE((SELECT created_at FROM client_history WHERE client_id = clients.id AND outcome IS NOT NULL ORDER BY id DESC LIMIT 1), clients.created_at) <= ?")
                 params.append((datetime.now(APP_TIMEZONE) - timedelta(days=7)).strftime('%Y-%m-%d %H:%M:%S'))
             if search_text:
-                columns = ('company', 'contact', 'internal_code', 'email', 'contact_phone', 'company_phone', 'box_type', 'next_action', 'plant', 'material_code', 'purchase_order', 'supplier', 'planned_requirement')
+                columns = ('company', 'contact', 'internal_code', 'email', 'contact_phone', 'company_phone',
+                           'company_location', 'box_type', 'next_action', 'plant', 'material_code', 'purchase_order',
+                           'supplier', 'planned_requirement', 'opportunity_type', 'industry', 'product_measure',
+                           'delivery_address', 'quote_specifications')
                 if IS_POSTGRES:
                     search_clauses = [f'clients.{column} ILIKE ?' for column in columns]
                 else:
@@ -1049,6 +1083,8 @@ class Handler(BaseHTTPRequestHandler):
             required = ['company', 'contact', 'next_action', 'stage']
             if any(not str(data.get(key, '')).strip() for key in required):
                 return self.send_json({'error': 'Completa todos los campos requeridos'}, 400)
+            if data['stage'] not in {'new', 'negotiation', 'quoted', 'won', 'lost'}:
+                return self.send_json({'error': 'Selecciona una etapa de negociación válida'}, 400)
             initial_won_value = None
             if data['stage'] == 'won':
                 try:
@@ -1058,35 +1094,61 @@ class Handler(BaseHTTPRequestHandler):
                 if initial_won_value < 0:
                     return self.send_json({'error': 'El importe real de venta no puede ser negativo'}, 400)
             preferred_contact = str(data.get('preferred_contact', 'call'))
-            if preferred_contact not in {'call', 'whatsapp', 'email', 'visit'}:
+            if preferred_contact not in {'call', 'whatsapp', 'email', 'visit', 'facebook', 'linkedin', 'tiktok', 'instagram'}:
                 return self.send_json({'error': 'Selecciona un medio de contacto válido'}, 400)
             try:
                 sample_provided = int(data.get('sample_provided', 0))
                 drawing_provided = int(data.get('drawing_provided', 0))
                 if sample_provided not in {0, 1} or drawing_provided not in {0, 1}:
                     raise ValueError
+                probability = int(data.get('probability', 0))
+                if probability < 0 or probability > 100:
+                    raise ValueError
+                opportunity_value = int(data.get('value', 0))
+                estimated_quantity = int(data.get('estimated_quantity') or 0)
+                if opportunity_value < 0 or estimated_quantity < 0:
+                    raise ValueError
+                ink_count = data.get('ink_count')
+                ink_count = int(ink_count) if ink_count not in (None, '') else None
+                if ink_count is not None and ink_count < 0:
+                    raise ValueError
                 requested_delivery_date = data.get('requested_delivery_date') or None
                 expected_delivery_date = data.get('expected_delivery_date') or None
-                for delivery_date in (requested_delivery_date, expected_delivery_date):
+                estimated_close_date = data.get('estimated_close_date') or None
+                for delivery_date in (requested_delivery_date, expected_delivery_date, estimated_close_date):
                     if delivery_date:
                         datetime.strptime(delivery_date, '%Y-%m-%d')
+                mikelman_treatment = str(data.get('mikelman_treatment', '')).strip()
+                if mikelman_treatment not in {'', '0', '1'}:
+                    raise ValueError
             except (TypeError, ValueError):
-                return self.send_json({'error': 'Revisa los datos de muestra, plano y fechas de entrega'}, 400)
+                return self.send_json({'error': 'Revisa los montos, volumen, probabilidad, tintas, muestra, plano y fechas'}, 400)
             try:
                 pieces_per_kg = data.get('pieces_per_kg')
                 pieces_per_kg = float(pieces_per_kg) if pieces_per_kg not in (None, '') else None
                 if pieces_per_kg is not None and (not math.isfinite(pieces_per_kg) or pieces_per_kg < 0):
                     raise ValueError
+                target_price = data.get('target_price')
+                target_price = float(target_price) if target_price not in (None, '') else None
+                if target_price is not None and (not math.isfinite(target_price) or target_price < 0):
+                    raise ValueError
             except (TypeError, ValueError):
-                return self.send_json({'error': 'Piezas / Kg debe ser un número válido mayor o igual a cero'}, 400)
+                return self.send_json({'error': 'Precio objetivo y Piezas / Kg deben ser números válidos mayores o iguales a cero'}, 400)
             owner_id = user['id'] if user['role'] != 'admin' else int(data.get('owner_id') or user['id'])
+            weighted_forecast = opportunity_value * probability / 100
             with db() as connection:
                 cursor = connection.execute('''INSERT INTO clients(company, contact, value, estimated_quantity, next_action, stage,
                     owner_id, call_date, call_time, contact_phone, email, company_phone, box_type, internal_code,
                     sample_provided, preferred_contact, drawing_provided, requested_delivery_date, expected_delivery_date,
-                    plant, material_code, purchase_order, pieces_per_kg, unit_of_measure, planned_requirement, supplier)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id''',
-                    (data['company'].strip(), data['contact'].strip(), int(data.get('value', 0)), int(data.get('estimated_quantity', 0)), data['next_action'].strip(), data['stage'], owner_id, data.get('call_date') or None, data.get('call_time') or None, str(data.get('contact_phone', '')).strip() or None, str(data.get('email', '')).strip().lower() or None, str(data.get('company_phone', '')).strip() or None, str(data.get('box_type', '')).strip() or None, str(data.get('internal_code', '')).strip() or None, sample_provided, preferred_contact, drawing_provided, requested_delivery_date, expected_delivery_date, str(data.get('plant', '')).strip() or None, str(data.get('material_code', '')).strip() or None, str(data.get('purchase_order', '')).strip() or None, pieces_per_kg, str(data.get('unit_of_measure', '')).strip() or None, str(data.get('planned_requirement', '')).strip() or None, str(data.get('supplier', '')).strip() or None))
+                    plant, material_code, purchase_order, pieces_per_kg, unit_of_measure, planned_requirement, supplier,
+                    company_location, delivery_address, delivery_conditions, quote_specifications, flute, ink_count,
+                    internal_dimensions, external_dimensions, liner_type, mikelman_treatment, pallet, periodicity,
+                    payment_terms, max_pallet_height, target_price, opportunity_type, industry, product_measure,
+                    probability, weighted_forecast, estimated_close_date, pinned_note)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id''',
+                    (data['company'].strip(), data['contact'].strip(), opportunity_value, estimated_quantity, data['next_action'].strip(), data['stage'], owner_id, data.get('call_date') or None, data.get('call_time') or None, str(data.get('contact_phone', '')).strip() or None, str(data.get('email', '')).strip().lower() or None, str(data.get('company_phone', '')).strip() or None, str(data.get('box_type', '')).strip() or None, str(data.get('internal_code', '')).strip() or None, sample_provided, preferred_contact, drawing_provided, requested_delivery_date, expected_delivery_date, str(data.get('plant', '')).strip() or None, str(data.get('material_code', '')).strip() or None, str(data.get('purchase_order', '')).strip() or None, pieces_per_kg, str(data.get('unit_of_measure', '')).strip() or None, str(data.get('planned_requirement', '')).strip() or None, str(data.get('supplier', '')).strip() or None, str(data.get('company_location', '')).strip() or None, str(data.get('delivery_address', '')).strip() or None, str(data.get('delivery_conditions', '')).strip() or None, str(data.get('quote_specifications', '')).strip() or None, str(data.get('flute', '')).strip() or None, ink_count, str(data.get('internal_dimensions', '')).strip() or None, str(data.get('external_dimensions', '')).strip() or None, str(data.get('liner_type', '')).strip() or None, mikelman_treatment or None, str(data.get('pallet', '')).strip() or None, str(data.get('periodicity', '')).strip() or None, str(data.get('payment_terms', '')).strip() or None, str(data.get('max_pallet_height', '')).strip() or None, target_price, str(data.get('opportunity_type', '')).strip() or None, str(data.get('industry', '')).strip() or None, str(data.get('product_measure', '')).strip() or None, probability, weighted_forecast, estimated_close_date, str(data.get('pinned_note', '')).strip()[:500] or None))
                 client_id = cursor.fetchone()[0]
                 connection.execute('INSERT INTO client_history(client_id, user_id, to_stage, call_date, call_time, note, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)', (client_id, user['id'], data['stage'], data.get('call_date') or None, data.get('call_time') or None, None, local_timestamp()))
                 connection.execute('INSERT INTO sales_activities(client_id, user_id, activity_type, created_at) VALUES (?, ?, ?, ?)', (client_id, user['id'], 'new_opportunity', local_timestamp()))
@@ -1213,18 +1275,22 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send_json({'error': 'Prospecto no encontrado'}, 404)
                 updates = {}
                 try:
-                    for key in ('company', 'contact'):
+                    for key in ('company', 'contact', 'next_action'):
                         if key in data:
                             text = str(data[key]).strip()
                             if not text:
                                 raise ValueError
-                            updates[key] = text[:80]
+                            updates[key] = text[:120]
                     for key in ('contact_phone', 'company_phone', 'box_type', 'internal_code'):
                         if key in data:
                             updates[key] = str(data[key]).strip()[:120] or None
-                    for key in ('plant', 'material_code', 'purchase_order', 'unit_of_measure', 'planned_requirement', 'supplier'):
+                    for key in ('plant', 'material_code', 'purchase_order', 'unit_of_measure', 'planned_requirement', 'supplier',
+                                'company_location', 'delivery_address', 'delivery_conditions', 'quote_specifications',
+                                'flute', 'internal_dimensions', 'external_dimensions', 'liner_type', 'pallet',
+                                'periodicity', 'payment_terms', 'max_pallet_height', 'opportunity_type', 'industry',
+                                'product_measure'):
                         if key in data:
-                            updates[key] = str(data[key]).strip()[:120] or None
+                            updates[key] = str(data[key]).strip()[:1000] or None
                     if 'pieces_per_kg' in data:
                         pieces_per_kg = float(data['pieces_per_kg']) if data['pieces_per_kg'] not in (None, '') else None
                         if pieces_per_kg is not None and (not math.isfinite(pieces_per_kg) or pieces_per_kg < 0):
@@ -1240,8 +1306,28 @@ class Handler(BaseHTTPRequestHandler):
                             if number < 0:
                                 raise ValueError
                             updates[key] = number
+                    if 'target_price' in data:
+                        target_price = float(data['target_price']) if data['target_price'] not in (None, '') else None
+                        if target_price is not None and (not math.isfinite(target_price) or target_price < 0):
+                            raise ValueError
+                        updates['target_price'] = target_price
+                    if 'probability' in data:
+                        probability = int(data['probability'])
+                        if probability < 0 or probability > 100:
+                            raise ValueError
+                        updates['probability'] = probability
+                    if 'ink_count' in data:
+                        ink_count = int(data['ink_count']) if data['ink_count'] not in (None, '') else None
+                        if ink_count is not None and ink_count < 0:
+                            raise ValueError
+                        updates['ink_count'] = ink_count
+                    if 'mikelman_treatment' in data:
+                        treatment = str(data['mikelman_treatment']).strip()
+                        if treatment not in {'', '0', '1'}:
+                            raise ValueError
+                        updates['mikelman_treatment'] = treatment or None
                     if 'preferred_contact' in data:
-                        if data['preferred_contact'] not in {'call', 'whatsapp', 'email', 'visit'}:
+                        if data['preferred_contact'] not in {'call', 'whatsapp', 'email', 'visit', 'facebook', 'linkedin', 'tiktok', 'instagram'}:
                             raise ValueError
                         updates['preferred_contact'] = data['preferred_contact']
                     for key in ('sample_provided', 'drawing_provided'):
@@ -1250,12 +1336,16 @@ class Handler(BaseHTTPRequestHandler):
                             if flag not in {0, 1}:
                                 raise ValueError
                             updates[key] = flag
-                    for key in ('requested_delivery_date', 'expected_delivery_date'):
+                    for key in ('requested_delivery_date', 'expected_delivery_date', 'estimated_close_date'):
                         if key in data:
                             value = data[key] or None
                             if value:
                                 datetime.strptime(value, '%Y-%m-%d')
                             updates[key] = value
+                    if 'value' in updates or 'probability' in updates:
+                        forecast_value = updates.get('value', client['value'])
+                        forecast_probability = updates.get('probability', client['probability'])
+                        updates['weighted_forecast'] = forecast_value * forecast_probability / 100
                     if user['role'] == 'admin' and data.get('owner_id'):
                         owner = connection.execute("SELECT id FROM users WHERE id = ? AND role = 'seller' AND active = 1", (int(data['owner_id']),)).fetchone()
                         if not owner:

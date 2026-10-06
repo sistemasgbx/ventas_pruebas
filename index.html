@@ -126,29 +126,48 @@
     <p class="local-note"><span aria-hidden="true">●</span> Datos protegidos en la base de datos del sistema</p>
   </main>
  
-  <!-- Formulario para crear un prospecto sin abandonar el pipeline. -->
+  <!-- Alta de oportunidades organizada en tres etapas de captura. -->
   <dialog id="client-dialog">
     <form id="client-form" method="dialog">
-      <div class="dialog-heading"><div><p class="eyebrow">Nueva oportunidad</p><h2>Agregar prospecto</h2></div><button type="button" class="close-button" id="close-dialog" aria-label="Cerrar">×</button></div>
-      <label>Empresa<input name="company" required maxlength="80" placeholder="Ej. Comercializadora del Centro"></label>
-      <label>Contacto<input name="contact" required maxlength="60" placeholder="Nombre de contacto"></label>
-      <div class="form-grid"><label>Código interno<input name="internalCode" maxlength="40" placeholder="Ej. GR-2026-015"></label><label>Medio de contacto<select name="preferredContact" required><option value="call">Llamada</option><option value="whatsapp">WhatsApp</option><option value="email">Correo electrónico</option><option value="visit">Visita</option></select></label></div>
-      <div class="form-grid"><label>Teléfono del prospecto<input name="contactPhone" type="tel" maxlength="25" placeholder="Ej. 55 1234 5678"></label><label>Correo electrónico<input name="email" type="email" maxlength="120" placeholder="contacto@empresa.com"></label></div>
-      <label>Teléfono de la empresa<input name="companyPhone" type="tel" maxlength="25" placeholder="Ej. 55 8765 4321"></label>
-      <div class="form-grid"><label>Valor estimado<input name="value" type="number" min="0" step="100" required placeholder="0"></label><label>Cantidad estimada<input name="estimatedQuantity" type="number" min="0" step="1" required placeholder="Ej. 500"></label></div>
-      <label>Tipo de caja<input name="boxType" required maxlength="100" placeholder="Ej. Caja troquelada con ventana"></label>
-      <h3 class="form-section-title">Compras y planeación</h3>
-      <div class="form-grid"><label>Planta<input name="plant" maxlength="80" placeholder="Planta o sucursal"></label><label>Código MP<input name="materialCode" maxlength="80" placeholder="Código de materia prima"></label></div>
-      <div class="form-grid"><label>OC<input name="purchaseOrder" maxlength="80" placeholder="Orden de compra"></label><label>Proveedor<input name="supplier" maxlength="100" placeholder="Nombre del proveedor"></label></div>
-      <div class="form-grid"><label>Piezas / Kg<input name="piecesPerKg" type="number" min="0" step="0.001" placeholder="0"></label><label>UM<input name="unitOfMeasure" maxlength="30" placeholder="Pieza, kg, millar..."></label></div>
-      <label>Requerimiento planeado<input name="plannedRequirement" maxlength="120" placeholder="Detalle de planeación"></label>
-      <div class="form-grid"><label>¿El cliente nos entregó una muestra?<select name="sampleProvided" required><option value="" selected disabled>Selecciona</option><option value="0">No</option><option value="1">Sí</option></select></label><label>¿El cliente nos entregó un plano?<select name="drawingProvided" required><option value="" selected disabled>Selecciona</option><option value="0">No</option><option value="1">Sí</option></select></label></div>
-      <div class="form-grid"><label>Fecha de entrega solicitada<input name="requestedDeliveryDate" type="date"></label><label>Fecha de entrega prevista<input name="expectedDeliveryDate" type="date"></label></div>
-      <label>Próximo seguimiento<input name="nextAction" required maxlength="60" placeholder="Ej. Llamada: mañana"></label>
-      <div class="form-grid"><label>Día de llamada<input name="callDate" type="date"></label><label>Hora de llamada<input name="callTime" type="time"></label></div>
-      <label>Etapa<select name="stage" id="client-stage"><option value="new">Nuevo</option><option value="negotiation">En negociación</option><option value="quoted">Cotizado</option><option value="won">Ganado</option><option value="lost">Perdido</option></select></label>
-      <label id="new-won-value-field" hidden>Importe real vendido (MXN)<input name="wonValue" type="number" min="0" step="1" placeholder="Importe confirmado del pedido"></label>
-      <div class="dialog-actions"><button type="button" class="button button-quiet" id="cancel-dialog">Cancelar</button><button class="button button-primary" type="submit">Guardar prospecto</button></div>
+      <div class="dialog-heading"><div><p class="eyebrow">Nueva oportunidad</p><h2>Agregar prospecto</h2><p id="client-step-caption" class="muted">Paso 1 de 3 · Datos de la empresa</p></div><button type="button" class="close-button" id="close-dialog" aria-label="Cerrar">×</button></div>
+      <div class="wizard-progress" aria-label="Progreso del formulario"><span class="wizard-step-active">1. Empresa</span><span>2. Checklist</span><span>3. Pipeline</span></div>
+      <section class="client-form-step" data-form-step="0">
+        <h3 class="form-section-title">Datos de la empresa y contacto</h3>
+        <label>Nombre de la empresa / razón social<input name="company" required maxlength="80" placeholder="Ej. Comercializadora del Centro"></label>
+        <label>Persona de contacto<input name="contact" required maxlength="60" placeholder="Nombre de contacto"></label>
+        <div class="form-grid"><label>Medio de contacto<select name="preferredContact" required><option value="call">Llamada</option><option value="whatsapp">WhatsApp</option><option value="email">Correo electrónico</option><option value="visit">Visita</option><option value="facebook">Facebook</option><option value="linkedin">LinkedIn</option><option value="tiktok">TikTok</option><option value="instagram">Instagram</option></select></label><label>Teléfono de contacto<input name="contactPhone" type="tel" maxlength="25" placeholder="Teléfono o celular"></label></div>
+        <div class="form-grid"><label>Correo de contacto<input name="email" type="email" maxlength="120" placeholder="contacto@empresa.com"></label><label>Número de la empresa<input name="companyPhone" type="tel" maxlength="25" placeholder="Teléfono general"></label></div>
+        <label>Ubicación de la empresa<input name="companyLocation" maxlength="180" placeholder="Ciudad, estado o dirección"></label>
+        <label>Etapa de negociación<select name="stage" id="client-stage"><option value="new">Nuevo</option><option value="negotiation">En negociación</option><option value="quoted">Cotizado</option><option value="won">Ganado</option><option value="lost">Perdido</option></select></label>
+        <label id="new-won-value-field" hidden>Importe real vendido (MXN)<input name="wonValue" type="number" min="0" step="1" placeholder="Importe confirmado del pedido"></label>
+      </section>
+      <section class="client-form-step" data-form-step="1" hidden>
+        <h3 class="form-section-title">Checklist para cotizar</h3>
+        <label>Dirección de entrega<input name="deliveryAddress" maxlength="180"></label>
+        <label>Condiciones y/o especificaciones de entrega<input name="deliveryConditions" maxlength="240" placeholder="Ej. Emplayado y entarimado"></label>
+        <label>Especificaciones detalladas a cotizar<textarea name="quoteSpecifications" maxlength="1000" rows="3"></textarea></label>
+        <div class="form-grid"><label>Flauta<input name="flute" maxlength="40"></label><label>Número de tintas<input name="inkCount" type="number" min="0" step="1"></label></div>
+        <div class="form-grid"><label>Medidas internas<input name="internalDimensions" maxlength="100"></label><label>Medidas externas<input name="externalDimensions" maxlength="100"></label></div>
+        <div class="form-grid"><label>¿Muestra física?<select name="sampleProvided" required><option value="" selected disabled>Selecciona</option><option value="0">No</option><option value="1">Sí</option></select></label><label>Tipo de liner<input name="linerType" maxlength="80"></label></div>
+        <div class="form-grid"><label>Tratamiento Mikelman<select name="mikelmanTreatment"><option value="">Sin especificar</option><option value="0">No</option><option value="1">Sí</option></select></label><label>Tarima<input name="pallet" maxlength="80"></label></div>
+        <div class="form-grid"><label>Volumen / piezas<input name="estimatedQuantity" type="number" min="0" step="1" placeholder="0"></label><label>Periodicidad<input name="periodicity" maxlength="60" placeholder="Ej. Mensual"></label></div>
+        <div class="form-grid"><label>Forma de pago<input name="paymentTerms" maxlength="80"></label><label>Altura máxima de tarima<input name="maxPalletHeight" maxlength="40" placeholder="Ej. 1.2 cm"></label></div>
+        <div class="form-grid"><label>Precio objetivo<input name="targetPrice" type="number" min="0" step="0.01"></label><label>Tipo de caja / producto<input name="boxType" maxlength="100" placeholder="Ej. Caja troquelada"></label></div>
+        <label>¿El cliente entregó un plano?<select name="drawingProvided" required><option value="" selected disabled>Selecciona</option><option value="0">No</option><option value="1">Sí</option></select></label>
+      </section>
+      <section class="client-form-step" data-form-step="2" hidden>
+        <h3 class="form-section-title">Pipeline comercial</h3>
+        <div class="form-grid"><label>Tipo de oportunidad<input name="opportunityType" maxlength="80" placeholder="Ej. Cliente nuevo"></label><label>Industria<input name="industry" maxlength="80"></label></div>
+        <label>Producto / medida<input name="productMeasure" maxlength="120"></label>
+        <div class="form-grid"><label>Valor de oportunidad (MXN)<input name="value" type="number" min="0" step="1" required placeholder="0"></label><label>Probabilidad (%)<input name="probability" type="number" min="0" max="100" step="1" value="0"></label></div>
+        <label>Forecast ponderado (MXN)<input name="weightedForecast" type="number" readonly value="0" aria-describedby="forecast-help"><small id="forecast-help" class="field-help">Se calcula con el valor de oportunidad y la probabilidad.</small></label>
+        <label>Fecha estimada de cierre<input name="estimatedCloseDate" type="date"></label>
+        <label>Motivo / siguiente acción<input name="nextAction" required maxlength="120" placeholder="Ej. Enviar cotización el viernes"></label>
+        <div class="form-grid"><label>Fecha de seguimiento<input name="callDate" type="date"></label><label>Hora de seguimiento<input name="callTime" type="time"></label></div>
+        <label>Observaciones<textarea name="pinnedNote" maxlength="500" rows="3"></textarea></label>
+        <label>Estado del pipeline<input id="client-pipeline-status" value="Activo" readonly></label>
+      </section>
+      <div class="dialog-actions wizard-actions"><button type="button" class="button button-quiet" id="cancel-dialog">Cancelar</button><button type="button" class="button button-quiet" id="client-step-back" hidden>Anterior</button><button type="button" class="button button-primary" id="client-step-next">Siguiente</button><button class="button button-primary" id="client-submit" type="submit" hidden>Guardar oportunidad</button></div>
     </form>
   </dialog>
   <dialog id="appointment-dialog">
@@ -244,19 +263,35 @@
     <form id="edit-form" method="dialog">
       <div class="dialog-heading"><div><p class="eyebrow">Ficha del prospecto</p><h2>Editar prospecto</h2></div><button type="button" class="close-button" id="edit-close" aria-label="Cerrar">×</button></div>
       <input name="client_id" type="hidden">
+      <h3 class="form-section-title">1. Datos de la empresa</h3>
       <label>Empresa<input name="company" required maxlength="80"></label>
       <label>Contacto<input name="contact" required maxlength="60"></label>
       <div class="form-grid"><label>Teléfono del prospecto<input name="contact_phone" type="tel" maxlength="25"></label><label>Correo electrónico<input name="email" type="email" maxlength="120"></label></div>
-      <div class="form-grid"><label>Teléfono de la empresa<input name="company_phone" type="tel" maxlength="25"></label><label>Código interno<input name="internal_code" maxlength="40"></label></div>
-      <div class="form-grid"><label>Valor estimado<input name="value" type="number" min="0" step="100" required></label><label>Cantidad estimada<input name="estimated_quantity" type="number" min="0" step="1" required></label></div>
+      <div class="form-grid"><label>Teléfono de la empresa<input name="company_phone" type="tel" maxlength="25"></label><label>Ubicación de la empresa<input name="company_location" maxlength="180"></label></div>
+      <label>Medio de contacto<select name="preferred_contact"><option value="call">Llamada</option><option value="whatsapp">WhatsApp</option><option value="email">Correo electrónico</option><option value="visit">Visita</option><option value="facebook">Facebook</option><option value="linkedin">LinkedIn</option><option value="tiktok">TikTok</option><option value="instagram">Instagram</option></select></label>
+      <label>Código interno<input name="internal_code" maxlength="40"></label>
+      <h3 class="form-section-title">2. Checklist para cotizar</h3>
+      <label>Dirección de entrega<input name="delivery_address" maxlength="180"></label>
+      <label>Condiciones de entrega<input name="delivery_conditions" maxlength="240"></label>
+      <label>Especificaciones detalladas<textarea name="quote_specifications" maxlength="1000" rows="3"></textarea></label>
+      <div class="form-grid"><label>Flauta<input name="flute" maxlength="40"></label><label>Número de tintas<input name="ink_count" type="number" min="0" step="1"></label></div>
+      <div class="form-grid"><label>Medidas internas<input name="internal_dimensions" maxlength="100"></label><label>Medidas externas<input name="external_dimensions" maxlength="100"></label></div>
+      <div class="form-grid"><label>Tipo de liner<input name="liner_type" maxlength="80"></label><label>Tratamiento Mikelman<select name="mikelman_treatment"><option value="">Sin especificar</option><option value="0">No</option><option value="1">Sí</option></select></label></div>
+      <div class="form-grid"><label>Tarima<input name="pallet" maxlength="80"></label><label>Volumen / piezas<input name="estimated_quantity" type="number" min="0" step="1" required></label></div>
+      <div class="form-grid"><label>Periodicidad<input name="periodicity" maxlength="60"></label><label>Forma de pago<input name="payment_terms" maxlength="80"></label></div>
+      <div class="form-grid"><label>Altura máxima de tarima<input name="max_pallet_height" maxlength="40"></label><label>Precio objetivo<input name="target_price" type="number" min="0" step="0.01"></label></div>
       <label>Tipo de caja<input name="box_type" maxlength="100"></label>
-      <h3 class="form-section-title">Compras y planeación</h3>
+      <div class="form-grid"><label>¿Nos dio muestra física?<select name="sample_provided"><option value="0">No</option><option value="1">Sí</option></select></label><label>¿Nos dio plano?<select name="drawing_provided"><option value="0">No</option><option value="1">Sí</option></select></label></div>
+      <h3 class="form-section-title">3. Pipeline comercial</h3>
       <div class="form-grid"><label>Planta<input name="plant" maxlength="80"></label><label>Código MP<input name="material_code" maxlength="80"></label></div>
       <div class="form-grid"><label>OC<input name="purchase_order" maxlength="80"></label><label>Proveedor<input name="supplier" maxlength="100"></label></div>
       <div class="form-grid"><label>Piezas / Kg<input name="pieces_per_kg" type="number" min="0" step="0.001"></label><label>UM<input name="unit_of_measure" maxlength="30"></label></div>
       <label>Requerimiento planeado<input name="planned_requirement" maxlength="120"></label>
-      <div class="form-grid"><label>Medio de contacto<select name="preferred_contact"><option value="call">Llamada</option><option value="whatsapp">WhatsApp</option><option value="email">Correo electrónico</option><option value="visit">Visita</option></select></label><label>¿Nos dio muestra?<select name="sample_provided"><option value="0">No</option><option value="1">Sí</option></select></label></div>
-      <div class="form-grid"><label>¿Nos dio plano?<select name="drawing_provided"><option value="0">No</option><option value="1">Sí</option></select></label><label>Entrega solicitada<input name="requested_delivery_date" type="date"></label></div>
+      <div class="form-grid"><label>Valor de oportunidad (MXN)<input name="value" type="number" min="0" step="1" required></label><label>Probabilidad (%)<input name="probability" type="number" min="0" max="100" step="1"></label></div>
+      <div class="form-grid"><label>Tipo de oportunidad<input name="opportunity_type" maxlength="80"></label><label>Industria<input name="industry" maxlength="80"></label></div>
+      <div class="form-grid"><label>Producto / medida<input name="product_measure" maxlength="120"></label><label>Fecha estimada de cierre<input name="estimated_close_date" type="date"></label></div>
+      <label>Próxima acción<input name="next_action" required maxlength="120"></label>
+      <label>Entrega solicitada<input name="requested_delivery_date" type="date"></label>
       <label>Entrega prevista<input name="expected_delivery_date" type="date"></label>
       <label>📌 Nota fija (visible en la tarjeta)<textarea name="pinned_note" maxlength="500" rows="2" placeholder="Ej. Solo recibe llamadas por la mañana; pide factura con RFC"></textarea></label>
       <label id="edit-owner-field" data-admin-only hidden>Vendedor asignado<select name="owner_id" id="edit-owner"></select></label>
