@@ -17,7 +17,7 @@
       <p class="muted">Ingresa para continuar con tu seguimiento comercial.</p>
       <div class="location-notice" role="note">
         <strong>Aviso de ubicación</strong>
-        <p>Si tu cuenta es de vendedor, al iniciar sesión se solicitará permiso al navegador para registrar y compartir la ubicación de trabajo mientras uses el CRM. Puedes detenerlo desde la sección Clientes; el administrador podrá consultar la última señal y su historial.</p>
+        <p>Si tu cuenta es de vendedor, al iniciar sesión se solicitará permiso al navegador para registrar una ubicación. Se guardará una sola vez por sesión de acceso; el administrador podrá consultar la última ubicación y su historial.</p>
       </div>
       <form id="login-form" class="login-form">
         <label>Usuario<input name="username" required autocomplete="username" placeholder="Tu usuario"></label>
@@ -95,8 +95,8 @@
     </section>
  
     <section id="seller-location-panel" class="location-share" data-seller-only hidden data-page="clients">
-      <div><p class="eyebrow">Ubicación de trabajo</p><h2>Registro de ubicación</h2><p id="location-status" class="muted">Al iniciar sesión se solicitará permiso para registrar la ubicación.</p></div>
-      <div class="location-actions"><button id="start-location" class="button button-primary" type="button">Reintentar ubicación</button><button id="stop-location" class="button button-quiet" type="button" hidden>Detener</button></div>
+      <div><p class="eyebrow">Ubicación de trabajo</p><h2>Registro de ubicación</h2><p id="location-status" class="muted">Al iniciar sesión se registrará una ubicación por sesión.</p></div>
+      <div class="location-actions"><button id="start-location" class="button button-primary" type="button">Reintentar ubicación</button></div>
     </section>
  
     <section class="summary" aria-label="Resumen" data-page="clients">
@@ -142,6 +142,7 @@
       </section>
       <section class="client-form-step" data-form-step="1" hidden>
         <h3 class="form-section-title">Checklist para cotizar</h3>
+        <label class="inline-checkbox"><input name="useCompanyLocation" type="checkbox"> Usar la ubicación de la empresa como dirección de entrega</label>
         <label>Dirección de entrega<input name="deliveryAddress" maxlength="180"></label>
         <label>Condiciones y/o especificaciones de entrega<input name="deliveryConditions" maxlength="240" placeholder="Ej. Emplayado y entarimado"></label>
         <label>Especificaciones detalladas a cotizar<textarea name="quoteSpecifications" maxlength="1000" rows="3"></textarea></label>
@@ -149,9 +150,9 @@
         <div class="form-grid"><label>Medidas internas<input name="internalDimensions" maxlength="100"></label><label>Medidas externas<input name="externalDimensions" maxlength="100"></label></div>
         <div class="form-grid"><label>¿Muestra física?<select name="sampleProvided"><option value="">Sin especificar</option><option value="0">No</option><option value="1">Sí</option></select></label><label>Tipo de liner<input name="linerType" maxlength="80"></label></div>
         <div class="form-grid"><label>Tratamiento Mikelman<select name="mikelmanTreatment"><option value="">Sin especificar</option><option value="0">No</option><option value="1">Sí</option></select></label><label>Tarima<input name="pallet" maxlength="80"></label></div>
-        <div class="form-grid"><label>Volumen / piezas<input name="estimatedQuantity" type="number" min="0" step="1" placeholder="0"></label><label>Periodicidad<input name="periodicity" maxlength="60" placeholder="Ej. Mensual"></label></div>
+        <div class="form-grid"><label>Volumen / cantidad de piezas<input name="estimatedQuantity" type="number" min="1" step="1" placeholder="0"></label><label>Periodicidad<input name="periodicity" maxlength="60" placeholder="Ej. Mensual"></label></div>
         <div class="form-grid"><label>Forma de pago<input name="paymentTerms" maxlength="80"></label><label>Altura máxima de tarima<input name="maxPalletHeight" maxlength="40" placeholder="Ej. 1.2 cm"></label></div>
-        <div class="form-grid"><label>Precio objetivo<input name="targetPrice" type="number" min="0" step="0.01"></label><label>Tipo de caja / producto<input name="boxType" maxlength="100" placeholder="Ej. Caja troquelada"></label></div>
+        <div class="form-grid"><label>Precio estimado por pieza (MXN)<input name="targetPrice" type="number" min="0.01" step="0.01" placeholder="0.00"></label><label>Tipo de caja / producto<input name="boxType" maxlength="100" placeholder="Ej. Caja troquelada"></label></div>
         <label>¿El cliente entregó un plano?<select name="drawingProvided"><option value="">Sin especificar</option><option value="0">No</option><option value="1">Sí</option></select></label>
       </section>
       <section class="client-form-step" data-form-step="2" hidden>
@@ -159,10 +160,12 @@
         <label>Etapa de negociación<select name="stage" id="client-stage"><option value="new">Nuevo</option><option value="negotiation">En negociación</option><option value="quoted">Cotizado</option><option value="won">Ganado</option><option value="lost">Perdido</option></select></label>
         <label id="new-won-value-field" hidden>Importe real vendido (MXN)<input name="wonValue" type="number" min="0" step="1" placeholder="Importe confirmado del pedido"></label>
         <label id="new-lost-reason-field" hidden>Motivo de pérdida<input name="lostReason" maxlength="100" placeholder="Ej. Precio o tiempo de entrega"></label>
-        <div class="form-grid"><label>Tipo de oportunidad<input name="opportunityType" maxlength="80" placeholder="Ej. Cliente nuevo"></label><label>Industria<input name="industry" maxlength="80"></label></div>
-        <label>Producto / medida<input name="productMeasure" maxlength="120"></label>
-        <div class="form-grid"><label>Valor de oportunidad (MXN)<input name="value" type="number" min="0" step="1" placeholder="0"></label><label>Probabilidad (%)<input name="probability" type="number" min="0" max="100" step="1" value="0"></label></div>
-        <label>Forecast ponderado (MXN)<input name="weightedForecast" type="number" readonly value="0" aria-describedby="forecast-help"><small id="forecast-help" class="field-help">Se calcula con el valor de oportunidad y la probabilidad.</small></label>
+        <div class="form-grid"><label>Tipo de oportunidad<input name="opportunityType" maxlength="80" placeholder="Ej. Cliente nuevo"></label><label>Industria / sector del cliente<input name="industry" maxlength="80" placeholder="Ej. Alimentos, automotriz"></label></div>
+        <label>¿El producto o medida difiere del tipo capturado en Checklist?<select name="productMeasureDifferent"><option value="0">No, usar lo capturado en Checklist</option><option value="1">Sí, agregar un detalle distinto</option></select></label>
+        <label id="product-measure-field" hidden>Detalle de producto / medida (solo si es distinto)<input name="productMeasure" maxlength="120"></label>
+        <div class="form-grid"><label>Valor estimado de oportunidad (MXN)<input name="value" type="number" min="0" step="1" placeholder="0" readonly aria-describedby="opportunity-value-help"></label><label>Probabilidad (%)<input name="probability" type="number" min="0" max="100" step="1" value="0"></label></div>
+        <small id="opportunity-value-help" class="field-help">Se calcula como precio por pieza × volumen y se usa como valor estimado de la oportunidad.</small>
+        <label>Forecast ponderado (MXN)<input name="weightedForecast" type="number" readonly value="0" aria-describedby="forecast-help"><small id="forecast-help" class="field-help">Se calcula con el valor estimado de oportunidad y la probabilidad.</small></label>
         <label>Fecha estimada de cierre<input name="estimatedCloseDate" type="date"></label>
         <label>Motivo / siguiente acción<input name="nextAction" maxlength="120" placeholder="Ej. Enviar cotización el viernes"></label>
         <div class="form-grid"><label>Fecha de seguimiento<input name="callDate" type="date"></label><label>Hora de seguimiento<input name="callTime" type="time"></label></div>
@@ -273,15 +276,16 @@
       <label>Medio de contacto<select name="preferred_contact"><option value="call">Llamada</option><option value="whatsapp">WhatsApp</option><option value="email">Correo electrónico</option><option value="visit">Visita</option><option value="facebook">Facebook</option><option value="linkedin">LinkedIn</option><option value="tiktok">TikTok</option><option value="instagram">Instagram</option></select></label>
       <label>Código interno<input name="internal_code" maxlength="40"></label>
       <h3 class="form-section-title">2. Checklist para cotizar</h3>
+      <label class="inline-checkbox"><input name="use_company_location" type="checkbox"> Usar la ubicación de la empresa como dirección de entrega</label>
       <label>Dirección de entrega<input name="delivery_address" maxlength="180"></label>
       <label>Condiciones de entrega<input name="delivery_conditions" maxlength="240"></label>
       <label>Especificaciones detalladas<textarea name="quote_specifications" maxlength="1000" rows="3"></textarea></label>
       <div class="form-grid"><label>Flauta<input name="flute" maxlength="40"></label><label>Número de tintas<input name="ink_count" type="number" min="0" step="1"></label></div>
       <div class="form-grid"><label>Medidas internas<input name="internal_dimensions" maxlength="100"></label><label>Medidas externas<input name="external_dimensions" maxlength="100"></label></div>
       <div class="form-grid"><label>Tipo de liner<input name="liner_type" maxlength="80"></label><label>Tratamiento Mikelman<select name="mikelman_treatment"><option value="">Sin especificar</option><option value="0">No</option><option value="1">Sí</option></select></label></div>
-      <div class="form-grid"><label>Tarima<input name="pallet" maxlength="80"></label><label>Volumen / piezas<input name="estimated_quantity" type="number" min="0" step="1" required></label></div>
+      <div class="form-grid"><label>Tarima<input name="pallet" maxlength="80"></label><label>Volumen / cantidad de piezas<input name="estimated_quantity" type="number" min="0" step="1" required></label></div>
       <div class="form-grid"><label>Periodicidad<input name="periodicity" maxlength="60"></label><label>Forma de pago<input name="payment_terms" maxlength="80"></label></div>
-      <div class="form-grid"><label>Altura máxima de tarima<input name="max_pallet_height" maxlength="40"></label><label>Precio objetivo<input name="target_price" type="number" min="0" step="0.01"></label></div>
+      <div class="form-grid"><label>Altura máxima de tarima<input name="max_pallet_height" maxlength="40"></label><label>Precio estimado por pieza (MXN)<input name="target_price" type="number" min="0" step="0.01"></label></div>
       <label>Tipo de caja<input name="box_type" maxlength="100"></label>
       <div class="form-grid"><label>¿Nos dio muestra física?<select name="sample_provided"><option value="0">No</option><option value="1">Sí</option></select></label><label>¿Nos dio plano?<select name="drawing_provided"><option value="0">No</option><option value="1">Sí</option></select></label></div>
       <h3 class="form-section-title">3. Pipeline comercial</h3>
@@ -289,9 +293,11 @@
       <div class="form-grid"><label>OC<input name="purchase_order" maxlength="80"></label><label>Proveedor<input name="supplier" maxlength="100"></label></div>
       <div class="form-grid"><label>Piezas / Kg<input name="pieces_per_kg" type="number" min="0" step="0.001"></label><label>UM<input name="unit_of_measure" maxlength="30"></label></div>
       <label>Requerimiento planeado<input name="planned_requirement" maxlength="120"></label>
-      <div class="form-grid"><label>Valor de oportunidad (MXN)<input name="value" type="number" min="0" step="1" required></label><label>Probabilidad (%)<input name="probability" type="number" min="0" max="100" step="1"></label></div>
-      <div class="form-grid"><label>Tipo de oportunidad<input name="opportunity_type" maxlength="80"></label><label>Industria<input name="industry" maxlength="80"></label></div>
-      <div class="form-grid"><label>Producto / medida<input name="product_measure" maxlength="120"></label><label>Fecha estimada de cierre<input name="estimated_close_date" type="date"></label></div>
+      <div class="form-grid"><label>Valor estimado de oportunidad (MXN)<input name="value" type="number" min="0" step="1" required readonly></label><label>Probabilidad (%)<input name="probability" type="number" min="0" max="100" step="1"></label></div>
+      <label>Forecast ponderado (MXN)<input name="weighted_forecast" type="number" readonly></label>
+      <div class="form-grid"><label>Tipo de oportunidad<input name="opportunity_type" maxlength="80"></label><label>Industria / sector del cliente<input name="industry" maxlength="80"></label></div>
+      <label>¿El producto o medida difiere del tipo capturado en Checklist?<select name="product_measure_different" id="edit-product-measure-different"><option value="0">No, usar lo capturado en Checklist</option><option value="1">Sí, agregar un detalle distinto</option></select></label>
+      <div class="form-grid"><label id="edit-product-measure-field" hidden>Detalle de producto / medida (solo si es distinto)<input name="product_measure" maxlength="120"></label><label>Fecha estimada de cierre<input name="estimated_close_date" type="date"></label></div>
       <label>Próxima acción<input name="next_action" required maxlength="120"></label>
       <label>Entrega solicitada<input name="requested_delivery_date" type="date"></label>
       <label>Entrega prevista<input name="expected_delivery_date" type="date"></label>

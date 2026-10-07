@@ -21,10 +21,7 @@ const CLIENT_PAGE_SIZE = 50;
 let currentUser = null;
 let activeView = null;
 let clientLayout = 'pipeline';
-let locationWatchId = null;
-let locationRefreshTimer = null;
-let locationEventPollTimer = null;
-let locationEventCursor = null;
+let locationPanelInitialized = false;
 let locationMap = null;
 let locationMarkers = [];
 let locationHistoryPage = 1;
@@ -112,27 +109,6 @@ function showToast(message, onClick) {
   toast.addEventListener('click', () => { toast.remove(); if (onClick) onClick(); });
   box.append(toast);
   setTimeout(() => toast.remove(), 9000);
-}
-
-async function pollLocationStopEvents() {
-  const path = locationEventCursor === null
-    ? '/api/admin/location-events'
-    : `/api/admin/location-events?after=${locationEventCursor}`;
-  const data = await api(path);
-  locationEventCursor = data.cursor;
-  data.events.forEach(event => {
-    const message = `${event.user_name} detuvo el uso compartido de su ubicación.`;
-    showToast(message, () => showView('locations').catch(error => alert(error.message)));
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification('Grubox CRM', { body: message });
-    }
-  });
-}
-
-function startLocationEventPolling() {
-  if (currentUser?.role !== 'admin' || locationEventPollTimer !== null) return;
-  pollLocationStopEvents().catch(() => {});
-  locationEventPollTimer = setInterval(() => pollLocationStopEvents().catch(() => {}), 15000);
 }
 
 const remindedKeys = new Set();
@@ -235,7 +211,7 @@ function render() {
   const visible = getVisibleClients();
   if (clientLayout === 'list') {
     pipeline.classList.add('prospect-list');
-    pipeline.innerHTML = `<div class="audit-table"><table><thead><tr><th>Fecha</th><th>Vendedor</th><th>Cliente / prospecto</th><th>Tipo de oportunidad</th><th>Industria</th><th>Producto / medida</th><th>Valor oportunidad</th><th>Probabilidad</th><th>Forecast ponderado</th><th>Etapa</th><th>Fecha estimada cierre</th><th>Motivo / siguiente acción</th><th>Estado</th><th>Observaciones</th><th>Planta</th><th>Código MP</th><th>OC</th><th>Piezas / Kg</th><th>UM</th><th>Requerimiento planeado</th><th>Fecha de entrega</th><th>Proveedor</th><th>Acciones</th></tr></thead><tbody>${visible.map(client => `<tr><td>${escapeHtml(client.created_at || '')}</td><td>${escapeHtml(client.owner_name || '')}</td><td><strong>${escapeHtml(client.company)}</strong><span class="table-subtext">${escapeHtml(client.contact)}</span></td><td>${escapeHtml(client.opportunity_type || '')}</td><td>${escapeHtml(client.industry || '')}</td><td>${escapeHtml(client.product_measure || '')}</td><td>${money.format(client.value)}</td><td>${Number(client.probability || 0)}%</td><td>${money.format(client.weighted_forecast || 0)}</td><td>${escapeHtml(stageLabel(client.stage))}</td><td>${client.estimated_close_date ? escapeHtml(formatCalendarDate(client.estimated_close_date)) : ''}</td><td>${escapeHtml(client.next_action || '')}</td><td>${Number(client.capture_complete) === 0 ? `Captura pendiente · paso ${Number(client.capture_step || 1)} de 3` : client.stage === 'won' ? 'Ganada' : client.stage === 'lost' ? 'Perdida' : 'Activa'}</td><td>${escapeHtml(client.pinned_note || '')}</td><td>${escapeHtml(client.plant || '')}</td><td>${escapeHtml(client.material_code || '')}</td><td>${escapeHtml(client.purchase_order || '')}</td><td>${client.pieces_per_kg == null ? '' : escapeHtml(Number(client.pieces_per_kg).toLocaleString('es-MX'))}</td><td>${escapeHtml(client.unit_of_measure || '')}</td><td>${escapeHtml(client.planned_requirement || '')}</td><td>${client.expected_delivery_date || client.requested_delivery_date ? escapeHtml(formatCalendarDate(client.expected_delivery_date || client.requested_delivery_date)) : ''}</td><td>${escapeHtml(client.supplier || '')}</td><td><div class="list-actions">${Number(client.capture_complete) === 0 ? `<button class="button button-primary continue-capture-button" data-id="${client.id}" type="button">Continuar</button>` : `<button class="button button-quiet follow-up-button" data-id="${client.id}" type="button" aria-label="Seguimiento de ${escapeHtml(client.company)}">◷</button><button class="button button-quiet edit-button" data-id="${client.id}" type="button">Editar</button>`}</div></td></tr>`).join('') || '<tr><td colspan="23">Sin registros</td></tr>'}</tbody></table></div>`;
+    pipeline.innerHTML = `<div class="audit-table"><table><thead><tr><th>Fecha</th><th>Vendedor</th><th>Cliente / prospecto</th><th>Tipo de oportunidad</th><th>Industria</th><th>Producto / medida</th><th>Valor oportunidad</th><th>Probabilidad</th><th>Forecast ponderado</th><th>Etapa</th><th>Fecha estimada cierre</th><th>Motivo / siguiente acción</th><th>Estado</th><th>Observaciones</th><th>Planta</th><th>Código MP</th><th>OC</th><th>Piezas / Kg</th><th>UM</th><th>Requerimiento planeado</th><th>Fecha de entrega</th><th>Proveedor</th><th>Captura por módulos</th><th>Acciones</th></tr></thead><tbody>${visible.map(client => `<tr><td>${escapeHtml(client.created_at || '')}</td><td>${escapeHtml(client.owner_name || '')}</td><td><strong>${escapeHtml(client.company)}</strong><span class="table-subtext">${escapeHtml(client.contact)}</span></td><td>${escapeHtml(client.opportunity_type || '')}</td><td>${escapeHtml(client.industry || '')}</td><td>${escapeHtml(client.product_measure || '')}</td><td>${money.format(client.value)}</td><td>${Number(client.probability || 0)}%</td><td>${money.format(client.weighted_forecast || 0)}</td><td>${escapeHtml(stageLabel(client.stage))}</td><td>${client.estimated_close_date ? escapeHtml(formatCalendarDate(client.estimated_close_date)) : ''}</td><td>${escapeHtml(client.next_action || '')}</td><td>${Number(client.capture_complete) === 0 ? `Captura pendiente · paso ${Number(client.capture_step || 1)} de 3` : client.stage === 'won' ? 'Ganada' : client.stage === 'lost' ? 'Perdida' : 'Activa'}</td><td>${escapeHtml(client.pinned_note || '')}</td><td>${escapeHtml(client.plant || '')}</td><td>${escapeHtml(client.material_code || '')}</td><td>${escapeHtml(client.purchase_order || '')}</td><td>${client.pieces_per_kg == null ? '' : escapeHtml(Number(client.pieces_per_kg).toLocaleString('es-MX'))}</td><td>${escapeHtml(client.unit_of_measure || '')}</td><td>${escapeHtml(client.planned_requirement || '')}</td><td>${client.expected_delivery_date || client.requested_delivery_date ? escapeHtml(formatCalendarDate(client.expected_delivery_date || client.requested_delivery_date)) : ''}</td><td>${escapeHtml(client.supplier || '')}</td><td>${renderCaptureSummary(client)}</td><td><div class="list-actions">${Number(client.capture_complete) === 0 ? `<button class="button button-primary continue-capture-button" data-id="${client.id}" type="button">Continuar</button>` : `<button class="button button-quiet follow-up-button" data-id="${client.id}" type="button" aria-label="Seguimiento de ${escapeHtml(client.company)}">◷</button><button class="button button-quiet edit-button" data-id="${client.id}" type="button">Editar</button>`}</div></td></tr>`).join('') || '<tr><td colspan="24">Sin registros</td></tr>'}</tbody></table></div>`;
   } else {
     pipeline.classList.remove('prospect-list');
     pipeline.innerHTML = stages.map(stage => {
@@ -315,6 +291,7 @@ function renderCard(client) {
       <p class="movement-info"><strong>Último movimiento:</strong> ${escapeHtml(movement)}${client.last_movement_at ? ` · ${escapeHtml(formatMovementTimestamp(client.last_movement_at))}` : ''}</p>
       ${client.last_note ? `<p class="movement-note">${escapeHtml(client.last_note)}</p>` : ''}
     </div>
+    ${renderCaptureSummary(client)}
     ${isOpen(client) && Number(client.capture_complete) !== 0 ? `<div class="contact-actions">${contactActions(client)}</div>` : ''}
     <div class="card-actions">
       ${Number(client.capture_complete) === 0
@@ -325,6 +302,67 @@ function renderCard(client) {
     </div>
     ${deleteButton}
   </div>`;
+}
+
+function renderCaptureSummary(client) {
+  const completed = Number(client.capture_complete) !== 0;
+  const captureStep = Number(client.capture_step || 1);
+  const contactLabels = { call: 'Llamada', whatsapp: 'WhatsApp', email: 'Correo electrónico', visit: 'Visita', facebook: 'Facebook', linkedin: 'LinkedIn', tiktok: 'TikTok', instagram: 'Instagram' };
+  const modules = [
+    {
+      title: '1. Datos de la empresa',
+      complete: completed || captureStep >= 2,
+      fields: [
+        ['Empresa', 'company'], ['Contacto', 'contact'], ['Medio de contacto', 'preferred_contact', value => contactLabels[value] || value],
+        ['Teléfono de contacto', 'contact_phone'], ['Correo', 'email'],
+        ['Teléfono de empresa', 'company_phone'], ['Ubicación de empresa', 'company_location']
+      ]
+    },
+    {
+      title: '2. Checklist para cotizar',
+      complete: completed || captureStep >= 3,
+      fields: [
+        ['Dirección de entrega', 'delivery_address'], ['Condiciones de entrega', 'delivery_conditions'],
+        ['Especificaciones', 'quote_specifications'], ['Flauta', 'flute'], ['Número de tintas', 'ink_count'],
+        ['Medidas internas', 'internal_dimensions'], ['Medidas externas', 'external_dimensions'],
+        ['Muestra física', 'sample_provided', value => Number(value) ? 'Sí' : 'No'],
+        ['Tipo de liner', 'liner_type'], ['Tratamiento Mikelman', 'mikelman_treatment', value => Number(value) ? 'Sí' : 'No'],
+        ['Tarima', 'pallet'], ['Volumen / piezas', 'estimated_quantity', value => Number(value).toLocaleString('es-MX')],
+        ['Periodicidad', 'periodicity'], ['Forma de pago', 'payment_terms'],
+        ['Altura máxima de tarima', 'max_pallet_height'],
+        ['Precio estimado por pieza', 'target_price', value => money.format(value)],
+        ['Tipo de caja / producto', 'box_type'],
+        ['Plano', 'drawing_provided', value => Number(value) ? 'Sí' : 'No']
+      ]
+    },
+    {
+      title: '3. Pipeline comercial',
+      complete: completed,
+      fields: [
+        ['Etapa', 'stage', value => stageLabel(value)], ['Tipo de oportunidad', 'opportunity_type'],
+        ['Industria / sector', 'industry'], ['Producto / medida', 'product_measure'],
+        ['Valor estimado', 'value', value => money.format(value)],
+        ['Probabilidad', 'probability', value => `${Number(value)}%`],
+        ['Forecast ponderado', 'weighted_forecast', value => money.format(value)],
+        ['Fecha estimada de cierre', 'estimated_close_date'], ['Siguiente acción', 'next_action'],
+        ['Fecha de seguimiento', 'call_date'], ['Hora de seguimiento', 'call_time'],
+        ['Observaciones', 'pinned_note'], ['Importe real vendido', 'won_value', value => money.format(value)],
+        ['Motivo de pérdida', 'lost_reason']
+      ]
+    }
+  ];
+  const tables = modules.map(module => {
+    const rows = module.fields
+      .filter(([, key]) => client[key] !== null && client[key] !== undefined
+        && String(client[key]).trim() !== ''
+        && !(['estimated_quantity', 'probability', 'weighted_forecast', 'value'].includes(key) && Number(client[key]) === 0))
+      .map(([label, key, format]) => `<tr><th scope="row">${escapeHtml(label)}</th><td>${escapeHtml(format ? format(client[key]) : client[key])}</td></tr>`)
+      .join('');
+    const status = module.complete ? 'Capturado' : 'Pendiente';
+    const tableRows = rows || `<tr><td colspan="2" class="capture-empty">${module.complete ? 'Sin datos adicionales guardados.' : 'Pendiente por capturar.'}</td></tr>`;
+    return `<section class="capture-module"><h4>${escapeHtml(module.title)} <span>${status}</span></h4><div class="capture-table-wrap"><table><tbody>${tableRows}</tbody></table></div></section>`;
+  }).join('');
+  return `<details class="capture-summary" ${completed ? '' : 'open'}><summary>Ver 3 tablas de captura</summary><div class="capture-modules">${tables}</div></details>`;
 }
 
 function formatCall(date, time) { return `${new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium' }).format(new Date(`${date}T00:00:00`))} a las ${time}`; }
@@ -673,7 +711,27 @@ document.querySelector('#today-page').addEventListener('click', async event => {
 
 // ---------- Exportar CSV ----------
 async function exportCsv() {
-  const cols = [['created_at', 'Fecha'], ['owner_name', 'Vendedor'], ['company', 'Empresa'], ['contact', 'Contacto'], ['contact_phone', 'Teléfono'], ['email', 'Correo'], ['company_phone', 'Teléfono empresa'], ['company_location', 'Ubicación empresa'], ['preferred_contact', 'Medio de contacto'], ['opportunity_type', 'Tipo de oportunidad'], ['industry', 'Industria'], ['product_measure', 'Producto / medida'], ['value', 'Valor de oportunidad'], ['probability', 'Probabilidad (%)'], ['weighted_forecast', 'Forecast ponderado'], ['stage', 'Etapa'], ['estimated_close_date', 'Fecha estimada de cierre'], ['next_action', 'Motivo / siguiente acción'], ['status', 'Estado'], ['pinned_note', 'Observaciones'], ['delivery_address', 'Dirección de entrega'], ['delivery_conditions', 'Condiciones de entrega'], ['quote_specifications', 'Especificaciones a cotizar'], ['flute', 'Flauta'], ['ink_count', 'Número de tintas'], ['internal_dimensions', 'Medidas internas'], ['external_dimensions', 'Medidas externas'], ['sample_provided', 'Muestra física'], ['liner_type', 'Tipo de liner'], ['mikelman_treatment', 'Tratamiento Mikelman'], ['pallet', 'Tarima'], ['estimated_quantity', 'Volumen / piezas'], ['periodicity', 'Periodicidad'], ['payment_terms', 'Forma de pago'], ['max_pallet_height', 'Altura máxima de tarima'], ['target_price', 'Precio objetivo'], ['plant', 'Planta'], ['material_code', 'Código MP'], ['purchase_order', 'OC'], ['pieces_per_kg', 'Piezas / Kg'], ['unit_of_measure', 'UM'], ['planned_requirement', 'Requerimiento planeado'], ['supplier', 'Proveedor'], ['won_value', 'Importe vendido'], ['lost_reason', 'Motivo de pérdida'], ['call_date', 'Próximo contacto']];
+  const cols = [
+    ['created_at', 'Fecha'], ['owner_name', 'Vendedor'], ['company', 'Empresa'], ['contact', 'Contacto'],
+    ['contact_phone', 'Teléfono'], ['email', 'Correo'], ['company_phone', 'Teléfono empresa'],
+    ['company_location', 'Ubicación empresa'], ['preferred_contact', 'Medio de contacto'],
+    ['opportunity_type', 'Tipo de oportunidad'], ['industry', 'Industria / sector'],
+    ['product_measure', 'Producto / medida'], ['value', 'Valor estimado de oportunidad'],
+    ['probability', 'Probabilidad (%)'], ['weighted_forecast', 'Forecast ponderado'],
+    ['stage', 'Etapa'], ['estimated_close_date', 'Fecha estimada de cierre'],
+    ['next_action', 'Motivo / siguiente acción'], ['status', 'Estado'], ['pinned_note', 'Observaciones'],
+    ['delivery_address', 'Dirección de entrega'], ['delivery_conditions', 'Condiciones de entrega'],
+    ['quote_specifications', 'Especificaciones a cotizar'], ['flute', 'Flauta'], ['ink_count', 'Número de tintas'],
+    ['internal_dimensions', 'Medidas internas'], ['external_dimensions', 'Medidas externas'],
+    ['sample_provided', 'Muestra física'], ['liner_type', 'Tipo de liner'],
+    ['mikelman_treatment', 'Tratamiento Mikelman'], ['pallet', 'Tarima'],
+    ['estimated_quantity', 'Volumen / cantidad de piezas'], ['periodicity', 'Periodicidad'],
+    ['payment_terms', 'Forma de pago'], ['max_pallet_height', 'Altura máxima de tarima'],
+    ['target_price', 'Precio estimado por pieza'], ['plant', 'Planta'], ['material_code', 'Código MP'],
+    ['purchase_order', 'OC'], ['pieces_per_kg', 'Piezas / Kg'], ['unit_of_measure', 'UM'],
+    ['planned_requirement', 'Requerimiento planeado'], ['supplier', 'Proveedor'],
+    ['won_value', 'Importe vendido'], ['lost_reason', 'Motivo de pérdida'], ['call_date', 'Próximo contacto']
+  ];
   const cell = value => {
     let text = String(value ?? '');
     if (/^[=+\-@]/.test(text)) text = `'${text}`; // evita fórmulas en Excel
@@ -704,11 +762,30 @@ function showClientFormStep(step) {
   document.querySelector('#client-submit').hidden = step !== clientFormSteps.length - 1;
   document.querySelector('#client-save-progress').hidden = step === clientFormSteps.length - 1;
 }
+function syncCompanyDeliveryAddress(form, useCompanyLocation) {
+  const companyLocation = form.elements.companyLocation || form.elements.company_location;
+  const deliveryAddress = form.elements.deliveryAddress || form.elements.delivery_address;
+  if (useCompanyLocation.checked) deliveryAddress.value = companyLocation.value;
+  deliveryAddress.readOnly = useCompanyLocation.checked;
+}
+const useCompanyLocation = clientForm.elements.useCompanyLocation;
+useCompanyLocation.addEventListener('change', () => syncCompanyDeliveryAddress(clientForm, useCompanyLocation));
+clientForm.elements.companyLocation.addEventListener('input', () => {
+  if (useCompanyLocation.checked) syncCompanyDeliveryAddress(clientForm, useCompanyLocation);
+});
+const productMeasureDifferent = clientForm.elements.productMeasureDifferent;
+productMeasureDifferent.addEventListener('change', () => {
+  document.querySelector('#product-measure-field').hidden = productMeasureDifferent.value !== '1';
+});
 document.querySelector('#client-step-next').addEventListener('click', () => {
   const controls = [...clientFormSteps[clientFormStep].querySelectorAll('input, select, textarea')];
   const invalid = controls.find(control => !control.checkValidity());
   if (invalid) { invalid.reportValidity(); return; }
-  showClientFormStep(clientFormStep + 1);
+  const hasData = controls.some(control => control.type === 'checkbox'
+    ? control.checked
+    : !control.readOnly && String(control.value || '').trim() !== '');
+  if (!hasData) return alert('Captura al menos un dato de este módulo antes de continuar.');
+  saveClientProgress(false, true);
 });
 document.querySelector('#client-step-back').addEventListener('click', () => showClientFormStep(clientFormStep - 1));
 function updateWeightedForecast() {
@@ -716,7 +793,14 @@ function updateWeightedForecast() {
   const probability = Number(clientForm.elements.probability.value || 0);
   clientForm.elements.weightedForecast.value = (value * probability / 100).toFixed(2);
 }
-['value', 'probability'].forEach(name => clientForm.elements[name].addEventListener('input', updateWeightedForecast));
+function updateOpportunityValue() {
+  const price = Number(clientForm.elements.targetPrice.value || 0);
+  const quantity = Number(clientForm.elements.estimatedQuantity.value || 0);
+  clientForm.elements.value.value = String(Math.round(price * quantity));
+  updateWeightedForecast();
+}
+['targetPrice', 'estimatedQuantity'].forEach(name => clientForm.elements[name].addEventListener('input', updateOpportunityValue));
+clientForm.elements.probability.addEventListener('input', updateWeightedForecast);
 document.querySelector('#client-stage').addEventListener('change', event => {
   const stage = event.target.value;
   const isWon = stage === 'won';
@@ -727,12 +811,12 @@ document.querySelector('#client-stage').addEventListener('change', event => {
   clientForm.elements.lostReason.required = isLost;
   document.querySelector('#client-pipeline-status').value = isWon ? 'Ganado' : isLost ? 'Perdido' : 'Activo';
 });
-function clientFormPayload(complete) {
+function clientFormPayload(complete, advance = false) {
   const form = new FormData(clientForm);
   const optionalNumber = name => form.get(name) === '' ? null : Number(form.get(name));
   return {
     client_id: form.get('clientId'),
-    capture_step: complete ? 3 : clientFormStep + 1,
+    capture_step: complete ? 3 : clientFormStep + (advance ? 2 : 1),
     capture_complete: complete ? 1 : 0,
     company: form.get('company'), contact: form.get('contact'),
     contact_phone: form.get('contactPhone'), email: form.get('email'),
@@ -744,7 +828,7 @@ function clientFormPayload(complete) {
     box_type: form.get('boxType'), next_action: form.get('nextAction'),
     call_date: form.get('callDate'), call_time: form.get('callTime'),
     sample_provided: optionalNumber('sampleProvided'), drawing_provided: optionalNumber('drawingProvided'),
-    delivery_address: form.get('deliveryAddress'), delivery_conditions: form.get('deliveryConditions'),
+    delivery_address: useCompanyLocation.checked ? form.get('companyLocation') : form.get('deliveryAddress'), delivery_conditions: form.get('deliveryConditions'),
     quote_specifications: form.get('quoteSpecifications'), flute: form.get('flute'),
     ink_count: optionalNumber('inkCount'), internal_dimensions: form.get('internalDimensions'),
     external_dimensions: form.get('externalDimensions'), liner_type: form.get('linerType'),
@@ -752,19 +836,20 @@ function clientFormPayload(complete) {
     periodicity: form.get('periodicity'), payment_terms: form.get('paymentTerms'),
     max_pallet_height: form.get('maxPalletHeight'), target_price: optionalNumber('targetPrice'),
     opportunity_type: form.get('opportunityType'), industry: form.get('industry'),
-    product_measure: form.get('productMeasure'), probability: Number(form.get('probability') || 0),
+    product_measure: productMeasureDifferent.value === '1' ? form.get('productMeasure') : form.get('boxType'), probability: Number(form.get('probability') || 0),
     estimated_close_date: form.get('estimatedCloseDate'), pinned_note: form.get('pinnedNote')
   };
 }
-async function saveClientProgress(complete) {
-  const payload = clientFormPayload(complete);
+async function saveClientProgress(complete, advance = false) {
+  const payload = clientFormPayload(complete, advance);
   if (!complete && ['won', 'lost'].includes(payload.stage)) {
     return alert('Para cerrar como Ganado o Perdido, termina primero la captura de la oportunidad.');
   }
   if (complete) {
-    for (const name of ['company', 'contact', 'nextAction', 'value', 'sampleProvided', 'drawingProvided']) {
+    for (const name of ['company', 'contact', 'nextAction', 'estimatedQuantity', 'targetPrice', 'sampleProvided', 'drawingProvided']) {
       const control = clientForm.elements[name];
       if (!String(control.value || '').trim()) {
+        showClientFormStep(name === 'estimatedQuantity' || name === 'targetPrice' ? 1 : 2);
         control.focus();
         return alert(`Completa el campo "${control.labels?.[0]?.textContent || name}" para guardar la oportunidad.`);
       }
@@ -783,7 +868,7 @@ async function saveClientProgress(complete) {
     if (invalid) { invalid.reportValidity(); return; }
   }
   try {
-    const clientId = payload.client_id;
+    let clientId = payload.client_id;
     delete payload.client_id;
     if (clientId) {
       const closingStage = ['won', 'lost'].includes(payload.stage) ? payload.stage : null;
@@ -800,7 +885,13 @@ async function saveClientProgress(complete) {
       }
     } else {
       const result = await api('/api/clients', { method: 'POST', body: JSON.stringify(payload) });
-      payload.client_id = result.id;
+      clientId = result.id;
+    }
+    if (advance) {
+      clientForm.elements.clientId.value = clientId;
+      await loadClients();
+      showClientFormStep(clientFormStep + 1);
+      return;
     }
     resetClientForm();
     document.querySelector('#client-dialog').close();
@@ -874,6 +965,9 @@ function resetClientForm() {
   clientForm.elements.wonValue.required = false;
   clientForm.elements.lostReason.required = false;
   document.querySelector('#client-pipeline-status').value = 'Activo';
+  syncCompanyDeliveryAddress(clientForm, useCompanyLocation);
+  document.querySelector('#product-measure-field').hidden = true;
+  updateOpportunityValue();
   showClientFormStep(0);
 }
 document.querySelector('#close-dialog').addEventListener('click', () => { resetClientForm(); document.querySelector('#client-dialog').close(); });
@@ -1011,8 +1105,13 @@ async function openEditDialog(id) {
   if (!client) return;
   const form = document.querySelector('#edit-form');
   form.elements.client_id.value = client.id;
-  ['company', 'contact', 'contact_phone', 'email', 'company_phone', 'company_location', 'internal_code', 'value', 'estimated_quantity', 'box_type', 'preferred_contact', 'requested_delivery_date', 'expected_delivery_date', 'pinned_note', 'plant', 'material_code', 'purchase_order', 'pieces_per_kg', 'unit_of_measure', 'planned_requirement', 'supplier', 'delivery_address', 'delivery_conditions', 'quote_specifications', 'flute', 'ink_count', 'internal_dimensions', 'external_dimensions', 'liner_type', 'mikelman_treatment', 'pallet', 'periodicity', 'payment_terms', 'max_pallet_height', 'target_price', 'probability', 'opportunity_type', 'industry', 'product_measure', 'estimated_close_date', 'next_action']
+  ['company', 'contact', 'contact_phone', 'email', 'company_phone', 'company_location', 'internal_code', 'value', 'weighted_forecast', 'estimated_quantity', 'box_type', 'preferred_contact', 'requested_delivery_date', 'expected_delivery_date', 'pinned_note', 'plant', 'material_code', 'purchase_order', 'pieces_per_kg', 'unit_of_measure', 'planned_requirement', 'supplier', 'delivery_address', 'delivery_conditions', 'quote_specifications', 'flute', 'ink_count', 'internal_dimensions', 'external_dimensions', 'liner_type', 'mikelman_treatment', 'pallet', 'periodicity', 'payment_terms', 'max_pallet_height', 'target_price', 'probability', 'opportunity_type', 'industry', 'product_measure', 'estimated_close_date', 'next_action']
     .forEach(name => { form.elements[name].value = client[name] ?? ''; });
+  form.elements.use_company_location.checked = Boolean(client.company_location && client.company_location === client.delivery_address);
+  syncCompanyDeliveryAddress(form, form.elements.use_company_location);
+  form.elements.product_measure_different.value = client.product_measure && client.product_measure !== client.box_type ? '1' : '0';
+  syncEditProductMeasure(form);
+  updateEditOpportunityValue(form);
   form.elements.sample_provided.value = Number(client.sample_provided || 0);
   form.elements.drawing_provided.value = Number(client.drawing_provided || 0);
   if (currentUser.role === 'admin') {
@@ -1022,6 +1121,37 @@ async function openEditDialog(id) {
   }
   document.querySelector('#edit-dialog').showModal();
 }
+function updateEditOpportunityValue(form, priceWasChanged = false) {
+  if (form.elements.target_price.value || priceWasChanged) {
+    const price = Number(form.elements.target_price.value || 0);
+    const quantity = Number(form.elements.estimated_quantity.value || 0);
+    form.elements.value.value = String(Math.round(price * quantity));
+  }
+  updateEditWeightedForecast(form);
+}
+function updateEditWeightedForecast(form) {
+  const value = Number(form.elements.value.value || 0);
+  const probability = Number(form.elements.probability.value || 0);
+  form.elements.weighted_forecast.value = (value * probability / 100).toFixed(2);
+}
+const editForm = document.querySelector('#edit-form');
+function syncEditProductMeasure(form) {
+  const isDifferent = form.elements.product_measure_different.value === '1';
+  document.querySelector('#edit-product-measure-field').hidden = !isDifferent;
+  form.elements.product_measure.readOnly = !isDifferent;
+  if (!isDifferent) form.elements.product_measure.value = form.elements.box_type.value;
+}
+editForm.elements.product_measure_different.addEventListener('change', () => syncEditProductMeasure(editForm));
+editForm.elements.box_type.addEventListener('input', () => {
+  if (editForm.elements.product_measure_different.value !== '1') syncEditProductMeasure(editForm);
+});
+editForm.elements.target_price.addEventListener('input', () => updateEditOpportunityValue(editForm, true));
+editForm.elements.estimated_quantity.addEventListener('input', () => updateEditOpportunityValue(editForm));
+editForm.elements.probability.addEventListener('input', () => updateEditWeightedForecast(editForm));
+editForm.elements.use_company_location.addEventListener('change', () => syncCompanyDeliveryAddress(editForm, editForm.elements.use_company_location));
+editForm.elements.company_location.addEventListener('input', () => {
+  if (editForm.elements.use_company_location.checked) syncCompanyDeliveryAddress(editForm, editForm.elements.use_company_location);
+});
 pipeline.addEventListener('click', event => {
   const button = event.target.closest('.edit-button');
   if (button) openEditDialog(button.dataset.id).catch(error => alert(error.message));
@@ -1055,6 +1185,11 @@ function openClientDraft(id) {
   Object.entries(fieldMap).forEach(([formName, clientName]) => {
     clientForm.elements[formName].value = client[clientName] ?? '';
   });
+  useCompanyLocation.checked = Boolean(client.company_location && client.company_location === client.delivery_address);
+  syncCompanyDeliveryAddress(clientForm, useCompanyLocation);
+  productMeasureDifferent.value = client.product_measure && client.product_measure !== client.box_type ? '1' : '0';
+  productMeasureDifferent.dispatchEvent(new Event('change'));
+  updateOpportunityValue();
   if (client.company === 'Oportunidad en captura') clientForm.elements.company.value = '';
   if (client.contact === 'Por definir') clientForm.elements.contact.value = '';
   if (client.next_action === 'Continuar captura') clientForm.elements.nextAction.value = '';
@@ -1159,8 +1294,7 @@ async function showDashboard() {
 // ---------- Ubicaciones ----------
 function formatLocationStatus(location) {
   if (!location) return 'Todavía no hay una ubicación registrada.';
-  const state = Number(location.sharing) ? 'Compartiendo' : 'Detenida';
-  return `${state} · última señal ${escapeHtml(formatMovementTimestamp(location.updated_at))}${location.accuracy ? ` · precisión aproximada ${Math.round(location.accuracy)} m` : ''}`;
+  return `Último registro ${escapeHtml(formatMovementTimestamp(location.updated_at))}${location.accuracy ? ` · precisión aproximada ${Math.round(location.accuracy)} m` : ''}`;
 }
 
 async function showLocations() {
@@ -1173,10 +1307,10 @@ async function showLocations() {
   const records = historyData.records || [];
   const pageCount = Math.max(1, Math.ceil(historyData.total / historyData.page_size));
   const historyRows = records.map(record => `<tr><td>${escapeHtml(formatMovementTimestamp(record.recorded_at))}</td><td><strong>${escapeHtml(record.user_name)}</strong></td><td>${Number(record.latitude).toFixed(5)}, ${Number(record.longitude).toFixed(5)}<span class="table-subtext">Precisión aprox. ${record.accuracy ? `${Math.round(record.accuracy)} m` : 'no disponible'}</span></td><td><a class="map-link" href="https://www.google.com/maps?q=${record.latitude},${record.longitude}" target="_blank" rel="noreferrer">Abrir mapa</a></td></tr>`).join('');
-  document.querySelector('#locations-page').innerHTML = `<div class="page-heading"><div><p class="eyebrow">Administración / Personal en campo</p><h1>Ubicaciones de vendedores</h1><p class="muted">Última señal por vendedor y registro histórico de cada ubicación compartida.</p></div><span class="date-label">Estado actual · actualización cada 30 segundos</span></div><section class="location-layout"><div id="location-map" class="location-map" aria-label="Mapa de vendedores"></div><section class="data-panel location-list"><h2>Última ubicación recibida</h2>${locations.map(location => `<article class="location-row"><div><strong>${escapeHtml(location.name)}</strong><span>${location.updated_at ? formatLocationStatus(location) : 'Sin ubicación registrada'}</span></div>${location.latitude !== null ? `<a class="map-link" href="https://www.google.com/maps?q=${location.latitude},${location.longitude}" target="_blank" rel="noreferrer">Abrir mapa</a>` : ''}</article>`).join('') || '<p class="empty-state">No hay vendedores activos.</p>'}</section></section><section class="data-panel location-history-panel"><div class="movement-panel-heading"><div><h2>Historial de ubicaciones</h2><span>${Number(historyData.total).toLocaleString('es-MX')} registros · 100 por página</span></div><div class="location-filters"><label>Vendedor<select id="location-seller-filter"><option value="">Todos</option>${locations.map(location => `<option value="${location.id}" ${String(location.id) === locationHistoryFilters.sellerId ? 'selected' : ''}>${escapeHtml(location.name)}</option>`).join('')}</select></label><label>Desde<input id="location-date-from" type="date" value="${escapeHtml(locationHistoryFilters.from)}"></label><label>Hasta<input id="location-date-to" type="date" value="${escapeHtml(locationHistoryFilters.to)}"></label><button class="button button-quiet" id="location-filter-clear" type="button">Limpiar</button></div></div><div class="audit-table"><table><thead><tr><th>Fecha y hora</th><th>Vendedor</th><th>Coordenadas</th><th>Mapa</th></tr></thead><tbody>${historyRows}</tbody></table>${historyRows ? '' : '<p class="empty-state">No hay ubicaciones registradas con estos filtros.</p>'}</div><div class="location-pagination"><button class="button button-quiet" id="location-page-prev" type="button" ${locationHistoryPage <= 1 ? 'disabled' : ''}>Anterior</button><span>Página ${locationHistoryPage} de ${pageCount}</span><button class="button button-quiet" id="location-page-next" type="button" ${locationHistoryPage >= pageCount ? 'disabled' : ''}>Siguiente</button></div></section>`;
+  document.querySelector('#locations-page').innerHTML = `<div class="page-heading"><div><p class="eyebrow">Administración / Personal en campo</p><h1>Ubicaciones de vendedores</h1><p class="muted">Última ubicación capturada al iniciar sesión y registro histórico.</p></div></div><section class="location-layout"><div id="location-map" class="location-map" aria-label="Mapa de vendedores"></div><section class="data-panel location-list"><h2>Última ubicación recibida</h2>${locations.map(location => `<article class="location-row"><div><strong>${escapeHtml(location.name)}</strong><span>${location.updated_at ? formatLocationStatus(location) : 'Sin ubicación registrada'}</span></div>${location.latitude !== null ? `<a class="map-link" href="https://www.google.com/maps?q=${location.latitude},${location.longitude}" target="_blank" rel="noreferrer">Abrir mapa</a>` : ''}</article>`).join('') || '<p class="empty-state">No hay vendedores activos.</p>'}</section></section><section class="data-panel location-history-panel"><div class="movement-panel-heading"><div><h2>Historial de ubicaciones</h2><span>${Number(historyData.total).toLocaleString('es-MX')} registros · 100 por página</span></div><div class="location-filters"><label>Vendedor<select id="location-seller-filter"><option value="">Todos</option>${locations.map(location => `<option value="${location.id}" ${String(location.id) === locationHistoryFilters.sellerId ? 'selected' : ''}>${escapeHtml(location.name)}</option>`).join('')}</select></label><label>Desde<input id="location-date-from" type="date" value="${escapeHtml(locationHistoryFilters.from)}"></label><label>Hasta<input id="location-date-to" type="date" value="${escapeHtml(locationHistoryFilters.to)}"></label><button class="button button-quiet" id="location-filter-clear" type="button">Limpiar</button><button class="button button-danger" id="location-history-delete" type="button" ${Number(historyData.total) ? '' : 'disabled'}>Eliminar historial</button></div></div><p class="field-help">Eliminar el historial no borra la última ubicación que aparece en el mapa.</p><div class="audit-table"><table><thead><tr><th>Fecha y hora</th><th>Vendedor</th><th>Coordenadas</th><th>Mapa</th></tr></thead><tbody>${historyRows}</tbody></table>${historyRows ? '' : '<p class="empty-state">No hay ubicaciones registradas con estos filtros.</p>'}</div><div class="location-pagination"><button class="button button-quiet" id="location-page-prev" type="button" ${locationHistoryPage <= 1 ? 'disabled' : ''}>Anterior</button><span>Página ${locationHistoryPage} de ${pageCount}</span><button class="button button-quiet" id="location-page-next" type="button" ${locationHistoryPage >= pageCount ? 'disabled' : ''}>Siguiente</button></div></section>`;
   if (locationMap) locationMap.remove();
   locationMarkers = [];
-  const validLocations = locations.filter(location => location.latitude !== null && location.longitude !== null && Number(location.sharing));
+  const validLocations = locations.filter(location => location.latitude !== null && location.longitude !== null);
   if (window.L) {
     locationMap = L.map('location-map').setView(validLocations.length ? [validLocations[0].latitude, validLocations[0].longitude] : [23.6345, -102.5528], validLocations.length ? 12 : 5);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(locationMap);
@@ -1193,35 +1327,43 @@ async function showLocations() {
   document.querySelector('#location-filter-clear').addEventListener('click', () => { locationHistoryFilters = { sellerId: '', from: '', to: '' }; locationHistoryPage = 1; showLocations().catch(error => alert(error.message)); });
   document.querySelector('#location-page-prev').addEventListener('click', () => { locationHistoryPage -= 1; showLocations().catch(error => alert(error.message)); });
   document.querySelector('#location-page-next').addEventListener('click', () => { locationHistoryPage += 1; showLocations().catch(error => alert(error.message)); });
-  if (locationRefreshTimer) clearTimeout(locationRefreshTimer);
-  locationRefreshTimer = setTimeout(() => { if (!document.querySelector('#locations-page').hidden) showLocations().catch(() => {}); }, 30000);
+  document.querySelector('#location-history-delete').addEventListener('click', async () => {
+    if (!window.confirm('¿Eliminar todos los registros del historial de ubicaciones? La última ubicación de cada vendedor se conservará.')) return;
+    try {
+      await api('/api/admin/location/history', { method: 'DELETE' });
+      locationHistoryPage = 1;
+      await showLocations();
+    } catch (error) { alert(error.message); }
+  });
 }
 
-function setLocationStatus(message, active = false) {
-  document.querySelector('#location-status').textContent = message;
-  document.querySelector('#start-location').hidden = active;
-  document.querySelector('#stop-location').hidden = !active;
-}
-
-async function sendLocation(position) {
-  const result = await api('/api/location', { method: 'POST', body: JSON.stringify({ latitude: position.coords.latitude, longitude: position.coords.longitude, accuracy: position.coords.accuracy }) });
-  setLocationStatus(`Compartiendo · última señal ${formatMovementTimestamp(result.updated_at)} · precisión aproximada ${Math.round(position.coords.accuracy)} m`, true);
-}
-
-function startLocationSharing() {
-  if (currentUser?.role !== 'seller') return; // el admin nunca comparte ubicación
-  if (!navigator.geolocation) return setLocationStatus('Este dispositivo no permite obtener ubicación.');
-  if (!window.isSecureContext) return setLocationStatus('El navegador bloquea la ubicación en HTTP. Abre el CRM desde https:// o, en la laptop servidor, desde http://localhost:8000.');
-  if (locationWatchId !== null) navigator.geolocation.clearWatch(locationWatchId);
-  setLocationStatus('Solicitando permiso de ubicación...', true);
-  locationWatchId = navigator.geolocation.watchPosition(position => sendLocation(position).catch(error => setLocationStatus(error.message)), error => setLocationStatus(`No se pudo obtener la ubicación: ${error.message}`), { enableHighAccuracy: true, maximumAge: 30000, timeout: 20000 });
-}
-
-async function stopLocationSharing() {
-  if (locationWatchId !== null) navigator.geolocation.clearWatch(locationWatchId);
-  locationWatchId = null;
-  await api('/api/location/stop', { method: 'POST' });
-  setLocationStatus('La ubicación dejó de compartirse.');
+function captureLocationOnce() {
+  if (currentUser?.role !== 'seller') return;
+  const status = document.querySelector('#location-status');
+  if (!navigator.geolocation) {
+    status.textContent = 'Este dispositivo no permite obtener ubicación.';
+    return;
+  }
+  if (!window.isSecureContext) {
+    status.textContent = 'El navegador bloquea la ubicación en HTTP. Abre el CRM desde https:// o, en la laptop servidor, desde http://localhost:8000.';
+    return;
+  }
+  status.textContent = 'Solicitando permiso para registrar la ubicación de esta sesión...';
+  navigator.geolocation.getCurrentPosition(async position => {
+    try {
+      const result = await api('/api/location', { method: 'POST', body: JSON.stringify({ latitude: position.coords.latitude, longitude: position.coords.longitude, accuracy: position.coords.accuracy }) });
+      status.textContent = result.recorded
+        ? `Ubicación registrada · ${formatMovementTimestamp(result.updated_at)} · precisión aproximada ${Math.round(position.coords.accuracy)} m`
+        : `La ubicación de esta sesión ya estaba registrada · ${formatMovementTimestamp(result.updated_at)}`;
+      document.querySelector('#start-location').hidden = true;
+    } catch (error) {
+      status.textContent = error.message;
+      document.querySelector('#start-location').hidden = false;
+    }
+  }, error => {
+    status.textContent = `No se pudo obtener la ubicación: ${error.message}`;
+    document.querySelector('#start-location').hidden = false;
+  }, { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
 }
 
 // El panel de ubicación es solo para vendedores y solo aparece en la vista Clientes.
@@ -1232,16 +1374,21 @@ function applyRoleVisibility() {
 
 async function setupLocationPanel() {
   applyRoleVisibility();
-  if (currentUser?.role !== 'seller') return;
-  document.querySelector('#start-location').addEventListener('click', startLocationSharing);
-  document.querySelector('#stop-location').addEventListener('click', () => stopLocationSharing().catch(error => setLocationStatus(error.message)));
+  if (currentUser?.role !== 'seller' || locationPanelInitialized) return;
+  locationPanelInitialized = true;
+  document.querySelector('#start-location').addEventListener('click', captureLocationOnce);
   try {
     const data = await api('/api/location');
-    if (data.location) setLocationStatus(formatLocationStatus(data.location), Boolean(data.location.sharing));
+    if (data.recorded_this_session) {
+      document.querySelector('#location-status').textContent = `Ubicación de esta sesión ya registrada${data.location ? ` · ${formatMovementTimestamp(data.location.updated_at)}` : ''}`;
+      document.querySelector('#start-location').hidden = true;
+      return;
+    }
+    if (data.location) document.querySelector('#location-status').textContent = formatLocationStatus(data.location);
   } catch (error) {
-    setLocationStatus(`No se pudo consultar la última ubicación: ${error.message}`);
+    document.querySelector('#location-status').textContent = `No se pudo consultar la última ubicación: ${error.message}`;
   }
-  startLocationSharing();
+  captureLocationOnce();
 }
 
 // ---------- Movimientos y auditoría ----------
@@ -1302,8 +1449,6 @@ async function showView(view) {
 // rápida incluso cuando la laptop funciona como servidor.
 document.querySelectorAll('[data-view]').forEach(link => link.addEventListener('click', async event => { event.preventDefault(); await showView(link.dataset.view); }));
 document.querySelector('#logout').addEventListener('click', async () => {
-  if (locationWatchId !== null && navigator.geolocation) navigator.geolocation.clearWatch(locationWatchId);
-  locationWatchId = null;
   await api('/api/logout', { method: 'POST' });
   location.reload();
 });
@@ -1320,11 +1465,10 @@ async function startSession(user) {
   document.querySelector('#login-screen').hidden = true;
   document.querySelector('#app-shell').hidden = false;
   document.querySelector('#user-name').textContent = user.name;
-  document.querySelector('#user-role').textContent = user.role === 'admin' ? 'Administrador' : 'Vendedora';
+  document.querySelector('#user-role').textContent = user.role === 'admin' ? 'Administrador' : 'Vendedor(a)';
   document.querySelectorAll('[data-admin-only]').forEach(element => { element.hidden = user.role !== 'admin'; });
   await loadClients();
   await setupLocationPanel();
-  startLocationEventPolling();
   announceFollowUps();
   setInterval(checkReminders, 60000);
   checkReminders();

@@ -11,7 +11,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from threading import RLock
+from threading import Lock, RLock
 from urllib.parse import parse_qs, urlparse
 from zoneinfo import ZoneInfo
 
@@ -1083,7 +1083,12 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json({'locations': [dict(row) for row in rows]})
             with db() as connection:
                 row = connection.execute('SELECT latitude, longitude, accuracy, sharing, updated_at FROM seller_locations WHERE user_id = ?', (user['id'],)).fetchone()
-            return self.send_json({'location': dict(row) if row else None})
+            token = self.headers.get('Cookie', '').replace('grubox_session=', '').split(';')[0]
+            session = SESSIONS.get(token)
+            return self.send_json({
+                'location': dict(row) if row else None,
+                'recorded_this_session': bool(session and session['location_captured'])
+            })
         if path == '/' or path == '/index.html':
             return self.serve_file('index.html', 'text/html; charset=utf-8')
         # Lista blanca: la base de datos, el código del servidor y los
@@ -1111,7 +1116,10 @@ class Handler(BaseHTTPRequestHandler):
             user = {'id': row['id'], 'username': row['username'], 'name': row['name'], 'role': row['role']}
             # El token no contiene datos del usuario y expira en ocho horas.
             token = secrets.token_urlsafe(32)
-            SESSIONS[token] = {'user': user, 'expires': time.time() + 28800}
+            SESSIONS[token] = {
+                'user': user, 'expires': time.time() + 28800,
+                'location_captured': False, 'location_lock': Lock()
+            }
             audit(user, 'Inicio de sesión', 'Acceso al sistema')
             return self.send_json({'user': user}, headers={'Set-Cookie': f'grubox_session={token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=28800'})
         user = self.require_user()
@@ -1137,15 +1145,25 @@ class Handler(BaseHTTPRequestHandler):
             if not -90 <= latitude <= 90 or not -180 <= longitude <= 180:
                 return self.send_json({'error': 'Las coordenadas están fuera de rango'}, 400)
             timestamp = local_timestamp()
-            with db() as connection:
-                connection.execute('INSERT INTO location_history(user_id, latitude, longitude, accuracy, recorded_at) VALUES (?, ?, ?, ?, ?)', (user['id'], latitude, longitude, accuracy, timestamp))
-                connection.execute('''INSERT INTO seller_locations(user_id, latitude, longitude, accuracy, sharing, updated_at)
-                    VALUES (?, ?, ?, ?, 1, ?)
-                    ON CONFLICT(user_id) DO UPDATE SET latitude = excluded.latitude,
-                    longitude = excluded.longitude, accuracy = excluded.accuracy,
-                    sharing = 1, updated_at = excluded.updated_at''',
-                    (user['id'], latitude, longitude, accuracy, timestamp))
-            return self.send_json({'ok': True, 'updated_at': timestamp})
+            token = self.headers.get('Cookie', '').replace('grubox_session=', '').split(';')[0]
+            session = SESSIONS.get(token)
+            if not session or session['user']['id'] != user['id']:
+                return self.send_json({'error': 'Sesión no válida'}, 401)
+            with session['location_lock']:
+                if session['location_captured']:
+                    with db() as connection:
+                        row = connection.execute('SELECT updated_at FROM seller_locations WHERE user_id = ?', (user['id'],)).fetchone()
+                    return self.send_json({'ok': True, 'recorded': False, 'updated_at': row['updated_at'] if row else None})
+                with db() as connection:
+                    connection.execute('INSERT INTO location_history(user_id, latitude, longitude, accuracy, recorded_at) VALUES (?, ?, ?, ?, ?)', (user['id'], latitude, longitude, accuracy, timestamp))
+                    connection.execute('''INSERT INTO seller_locations(user_id, latitude, longitude, accuracy, sharing, updated_at)
+                        VALUES (?, ?, ?, ?, 0, ?)
+                        ON CONFLICT(user_id) DO UPDATE SET latitude = excluded.latitude,
+                        longitude = excluded.longitude, accuracy = excluded.accuracy,
+                        sharing = 0, updated_at = excluded.updated_at''',
+                        (user['id'], latitude, longitude, accuracy, timestamp))
+                session['location_captured'] = True
+            return self.send_json({'ok': True, 'recorded': True, 'updated_at': timestamp})
         if path == '/api/location/stop':
             if user['role'] != 'seller':
                 return self.send_json({'error': 'Solo los vendedores pueden detener su ubicación'}, 403)
@@ -1209,9 +1227,8 @@ class Handler(BaseHTTPRequestHandler):
                 probability = int(data.get('probability', 0))
                 if probability < 0 or probability > 100:
                     raise ValueError
-                opportunity_value = int(data.get('value', 0))
                 estimated_quantity = int(data.get('estimated_quantity') or 0)
-                if opportunity_value < 0 or estimated_quantity < 0:
+                if estimated_quantity < 0:
                     raise ValueError
                 ink_count = data.get('ink_count')
                 ink_count = int(ink_count) if ink_count not in (None, '') else None
@@ -1238,7 +1255,10 @@ class Handler(BaseHTTPRequestHandler):
                 if target_price is not None and (not math.isfinite(target_price) or target_price < 0):
                     raise ValueError
             except (TypeError, ValueError):
-                return self.send_json({'error': 'Precio objetivo y Piezas / Kg deben ser números válidos mayores o iguales a cero'}, 400)
+                return self.send_json({'error': 'Precio estimado por pieza y Piezas / Kg deben ser números válidos mayores o iguales a cero'}, 400)
+            if capture_complete and (estimated_quantity <= 0 or target_price is None or target_price <= 0):
+                return self.send_json({'error': 'Captura el precio estimado por pieza y el volumen para calcular el valor de oportunidad'}, 400)
+            opportunity_value = math.floor(target_price * estimated_quantity + 0.5) if target_price is not None else 0
             owner_id = user['id'] if user['role'] != 'admin' else int(data.get('owner_id') or user['id'])
             weighted_forecast = opportunity_value * probability / 100
             with db() as connection:
@@ -1443,17 +1463,25 @@ class Handler(BaseHTTPRequestHandler):
                         updates['pinned_note'] = str(data['pinned_note']).strip()[:500] or None
                     if 'email' in data:
                         updates['email'] = str(data['email']).strip().lower()[:120] or None
-                    for key in ('value', 'estimated_quantity'):
-                        if key in data:
-                            number = int(data[key] or 0)
-                            if number < 0:
-                                raise ValueError
-                            updates[key] = number
+                    if 'estimated_quantity' in data:
+                        quantity = int(data['estimated_quantity'] or 0)
+                        if quantity < 0:
+                            raise ValueError
+                        updates['estimated_quantity'] = quantity
                     if 'target_price' in data:
                         target_price = float(data['target_price']) if data['target_price'] not in (None, '') else None
                         if target_price is not None and (not math.isfinite(target_price) or target_price < 0):
                             raise ValueError
                         updates['target_price'] = target_price
+                    if 'estimated_quantity' in updates or 'target_price' in updates:
+                        target_price = updates.get('target_price', client['target_price'])
+                        quantity = updates.get('estimated_quantity', client['estimated_quantity'])
+                        if target_price is not None:
+                            updates['value'] = math.floor(float(target_price) * int(quantity or 0) + 0.5)
+                        elif client['target_price'] is not None:
+                            updates['value'] = 0
+                        else:
+                            updates['value'] = client['value']
                     if 'probability' in data:
                         probability = int(data['probability'])
                         if probability < 0 or probability > 100:
@@ -1502,6 +1530,11 @@ class Handler(BaseHTTPRequestHandler):
                         updates['owner_id'] = owner['id']
                 except (TypeError, ValueError):
                     return self.send_json({'error': 'Revisa los datos del prospecto'}, 400)
+                if not client['capture_complete'] and capture_complete:
+                    target_price = updates.get('target_price', client['target_price'])
+                    quantity = updates.get('estimated_quantity', client['estimated_quantity'])
+                    if target_price is None or float(target_price) <= 0 or int(quantity or 0) <= 0:
+                        return self.send_json({'error': 'Captura el precio estimado por pieza y el volumen para calcular el valor de oportunidad'}, 400)
                 if not updates:
                     return self.send_json({'error': 'No hay cambios para guardar'}, 400)
                 # Las columnas salen de una lista fija de arriba, nunca del cliente.
@@ -1663,6 +1696,13 @@ class Handler(BaseHTTPRequestHandler):
         user = self.require_user()
         if not user:
             return
+        if path == '/api/admin/location/history':
+            if user['role'] != 'admin':
+                return self.send_json({'error': 'Solo el administrador puede eliminar el historial de ubicaciones'}, 403)
+            with db() as connection:
+                result = connection.execute('DELETE FROM location_history')
+            audit(user, 'Eliminó historial de ubicaciones', f"{result.rowcount} registros")
+            return self.send_json({'ok': True, 'deleted': result.rowcount})
         if path.startswith('/api/clients/'):
             if user['role'] != 'admin':
                 return self.send_json({'error': 'Solo el administrador puede eliminar prospectos'}, 403)
