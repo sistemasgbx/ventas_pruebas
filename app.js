@@ -747,6 +747,151 @@ async function exportCsv() {
   URL.revokeObjectURL(link.href);
 }
 
+// ---------- Imprimir o guardar todos los prospectos como PDF ----------
+const prospectPrintFields = [
+  {
+    title: '1. Datos de la empresa y contacto',
+    fields: [
+      ['Empresa', 'company'], ['Persona de contacto', 'contact'], ['Medio de contacto', 'preferred_contact'],
+      ['Teléfono de contacto', 'contact_phone'], ['Correo de contacto', 'email'],
+      ['Teléfono de la empresa', 'company_phone'], ['Ubicación de la empresa', 'company_location'],
+      ['Código interno', 'internal_code']
+    ]
+  },
+  {
+    title: '2. Checklist para cotizar',
+    fields: [
+      ['Dirección de entrega', 'delivery_address'], ['Condiciones de entrega', 'delivery_conditions'],
+      ['Especificaciones a cotizar', 'quote_specifications'], ['Flauta', 'flute'],
+      ['Número de tintas', 'ink_count'], ['Medidas internas', 'internal_dimensions'],
+      ['Medidas externas', 'external_dimensions'], ['Muestra física', 'sample_provided'],
+      ['Tipo de liner', 'liner_type'], ['Tratamiento Mikelman', 'mikelman_treatment'],
+      ['Tarima', 'pallet'], ['Volumen / cantidad de piezas', 'estimated_quantity'],
+      ['Periodicidad', 'periodicity'], ['Forma de pago', 'payment_terms'],
+      ['Altura máxima de tarima', 'max_pallet_height'], ['Precio estimado por pieza', 'target_price'],
+      ['Tipo de caja / producto', 'box_type'], ['Plano recibido', 'drawing_provided'],
+      ['Fecha de entrega solicitada', 'requested_delivery_date'],
+      ['Fecha de entrega prevista', 'expected_delivery_date']
+    ]
+  },
+  {
+    title: '3. Pipeline comercial',
+    fields: [
+      ['Etapa comercial', 'stage'], ['Tipo de oportunidad', 'opportunity_type'],
+      ['Industria / sector', 'industry'], ['Producto / medida', 'product_measure'],
+      ['Valor estimado de oportunidad', 'value'], ['Probabilidad', 'probability'],
+      ['Forecast ponderado', 'weighted_forecast'], ['Fecha estimada de cierre', 'estimated_close_date'],
+      ['Motivo / siguiente acción', 'next_action'], ['Próxima fecha de seguimiento', 'call_date'],
+      ['Hora de seguimiento', 'call_time'], ['Observaciones', 'pinned_note'],
+      ['Importe real vendido', 'won_value'], ['Motivo de pérdida', 'lost_reason']
+    ]
+  },
+  {
+    title: 'Datos operativos y estado de captura',
+    fields: [
+      ['Planta', 'plant'], ['Código MP', 'material_code'], ['Orden de compra', 'purchase_order'],
+      ['Piezas / Kg', 'pieces_per_kg'], ['Unidad de medida', 'unit_of_measure'],
+      ['Requerimiento planeado', 'planned_requirement'], ['Proveedor', 'supplier'],
+      ['Captura', 'capture_status'], ['Vendedor asignado', 'owner_name'],
+      ['Fecha de registro', 'created_at']
+    ]
+  },
+  {
+    title: 'Último movimiento registrado',
+    fields: [
+      ['Cambio de etapa anterior', 'last_from_stage'], ['Etapa del último movimiento', 'last_to_stage'],
+      ['Fecha de última llamada registrada', 'last_call_date'],
+      ['Hora de última llamada registrada', 'last_call_time'], ['Nota del último movimiento', 'last_note'],
+      ['Fecha del último movimiento', 'last_movement_at'], ['Fecha del último contacto', 'last_contact_at']
+    ]
+  }
+];
+
+const prospectContactLabels = {
+  call: 'Llamada', whatsapp: 'WhatsApp', email: 'Correo electrónico', visit: 'Visita',
+  facebook: 'Facebook', linkedin: 'LinkedIn', tiktok: 'TikTok', instagram: 'Instagram'
+};
+const prospectBooleanFields = new Set(['sample_provided', 'drawing_provided', 'mikelman_treatment']);
+const prospectMoneyFields = new Set(['target_price', 'value', 'weighted_forecast', 'won_value']);
+const prospectDateFields = new Set([
+  'requested_delivery_date', 'expected_delivery_date', 'estimated_close_date', 'call_date',
+  'last_call_date'
+]);
+
+function prospectPrintValue(client, key) {
+  const value = key === 'capture_status'
+    ? Number(client.capture_complete) === 0
+      ? `Pendiente · paso ${Number(client.capture_step || 1)} de 3`
+      : 'Completa'
+    : client[key];
+  if (value === null || value === undefined || String(value).trim() === '') return '';
+  if (key === 'stage' || key === 'last_from_stage' || key === 'last_to_stage') return stageLabel(value);
+  if (key === 'preferred_contact') return prospectContactLabels[value] || value;
+  if (prospectBooleanFields.has(key)) return Number(value) ? 'Sí' : 'No';
+  if (prospectMoneyFields.has(key)) return money.format(Number(value));
+  if (key === 'probability') return `${Number(value)}%`;
+  if (key === 'estimated_quantity' || key === 'pieces_per_kg') return Number(value).toLocaleString('es-MX');
+  if (prospectDateFields.has(key)) return formatCalendarDate(value);
+  if (key === 'created_at' || key === 'last_movement_at' || key === 'last_contact_at') {
+    return formatMovementTimestamp(value);
+  }
+  return String(value);
+}
+
+function renderProspectPrintCard(client, index) {
+  const groups = prospectPrintFields.map(group => {
+    const rows = group.fields.map(([label, key]) => {
+      const value = prospectPrintValue(client, key);
+      return value ? `<div class="prospect-print-field"><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>` : '';
+    }).join('');
+    return rows ? `<section class="prospect-print-section"><h3>${escapeHtml(group.title)}</h3><dl>${rows}</dl></section>` : '';
+  }).join('');
+  return `<article class="prospect-print-client${index === 0 ? ' prospect-print-client-first' : ''}">
+    <header class="prospect-print-client-heading">
+      <div><span class="prospect-print-folio">Prospecto #${escapeHtml(client.id)}</span><h2>${escapeHtml(client.company || 'Empresa sin nombre')}</h2></div>
+      <span class="prospect-print-stage">${escapeHtml(stageLabel(client.stage))}</span>
+    </header>${groups}
+  </article>`;
+}
+
+async function showProspectPrintPreview(button) {
+  const dialog = document.querySelector('#prospect-print-dialog');
+  const report = document.querySelector('#prospect-print-report');
+  const originalLabel = button.textContent;
+  button.disabled = true;
+  button.textContent = 'Preparando prospectos…';
+  try {
+    // El servidor aplica el alcance por usuario; se omiten únicamente filtros y paginación de pantalla.
+    const { first, items } = await fetchClientPages(false);
+    if (!items.length) {
+      alert('No hay prospectos para incluir en el reporte.');
+      return;
+    }
+    report.innerHTML = `<header class="prospect-print-cover">
+      <img src="grubox.png" alt="Grubox Corrugados">
+      <div><p class="eyebrow">Reporte comercial</p><h1>Prospectos y oportunidades</h1>
+      <p>${items.length} prospecto(s) · todas las etapas · Generado el ${escapeHtml(formatCalendarDate(todayIso()))}</p>
+      <p class="prospect-print-scope">${currentUser?.role === 'admin' ? 'Incluye los prospectos del equipo.' : 'Incluye tus prospectos.'}</p></div>
+    </header>${items.map(renderProspectPrintCard).join('')}`;
+    document.querySelector('#prospect-print-title').textContent = `Prospectos para imprimir · ${first.total}`;
+    if (!dialog.open) dialog.showModal();
+  } finally {
+    button.disabled = false;
+    button.textContent = originalLabel;
+  }
+}
+
+document.querySelector('#export-prospects-pdf').addEventListener('click', event => {
+  showProspectPrintPreview(event.currentTarget).catch(error => alert(error.message));
+});
+document.querySelector('#print-prospects').addEventListener('click', () => window.print());
+document.querySelector('#close-prospect-print').addEventListener('click', () => {
+  document.querySelector('#prospect-print-dialog').close();
+});
+document.querySelector('#prospect-print-dialog').addEventListener('close', () => {
+  document.querySelector('#prospect-print-report').replaceChildren();
+});
+
 // Alta de prospectos: el navegador organiza la captura; el servidor valida y guarda.
 const clientForm = document.querySelector('#client-form');
 const clientFormSteps = [...clientForm.querySelectorAll('[data-form-step]')];

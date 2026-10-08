@@ -70,6 +70,7 @@ En **Clientes** puedes:
 - Cambiar entre **Tablero** y **Lista**.
 - Usar **Anterior** y **Siguiente** para recorrer los resultados.
 - Seleccionar **Exportar CSV** para descargar los resultados que coinciden con los filtros activos y abrirlos en una hoja de cálculo.
+- Seleccionar **Imprimir / guardar PDF** para preparar un reporte imprimible con todos los prospectos permitidos para tu cuenta, de todas las etapas y sin aplicar los filtros de pantalla. Desde la vista previa, usa **Imprimir / Guardar PDF** y elige **Guardar como PDF** en el navegador.
 
 Los totales del resumen corresponden al conjunto de oportunidades, aunque estés viendo una página de resultados. “Dinero ganado” usa ventas reales; “oportunidades activas” y el pronóstico se refieren a oportunidades todavía abiertas.
 

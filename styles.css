@@ -8,7 +8,7 @@
 body { margin:0; min-width:320px; color:#2c3028; background:var(--paper); font:14px/1.45 'DM Sans', sans-serif; }
 /* Barra superior y marca compartida por login y aplicación. */
 .topbar { min-height:76px; padding:0 clamp(20px,5vw,72px); display:flex; align-items:center; gap:42px; color:#f7f1e3; background:var(--deep); border-bottom:3px solid var(--gold); }
-.brand { display:flex; align-items:center; gap:10px; color:inherit; text-decoration:none; white-space:nowrap; }.brand-mark { display:flex; align-items:center; justify-content:center; width:48px; height:34px; overflow:hidden; background:#fff; border-radius:2px; }.brand-mark img { display:block; width:76px; height:43px; object-fit:contain; }.brand strong,.brand small { display:block; }.brand strong { font:700 19px 'Playfair Display',serif; }.brand small { color:#bcc7b8; font-size:10px; letter-spacing:.02em; }
+.brand { display:flex; align-items:center; gap:10px; color:inherit; text-decoration:none; white-space:nowrap; }.brand-mark { display:flex; align-items:center; justify-content:center; width:48px; height:34px; overflow:hidden; background:transparent; border-radius:0; }.brand-mark img { display:block; width:76px; height:43px; object-fit:contain; }.brand strong,.brand small { display:block; }.brand strong { font:700 19px 'Playfair Display',serif; }.brand small { color:#bcc7b8; font-size:10px; letter-spacing:.02em; }
 .login-brand .brand-mark { width:145px; height:58px; }.login-brand .brand-mark img { width:145px; height:82px; }.topbar .brand-mark { width:82px; height:40px; }.topbar .brand-mark img { width:120px; height:68px; }
 nav { display:flex; align-self:stretch; gap:22px; }nav a { display:flex; align-items:center; color:#d6ddd0; text-decoration:none; border-bottom:3px solid transparent; }nav a.active { color:#fff; border-color:var(--gold); }.user-chip { margin-left:auto; color:#d8dfd5; font-size:12px; }.status-dot { display:inline-block; width:7px; height:7px; margin-right:6px; border-radius:50%; background:#77a779; }.role { margin-left:8px; padding:4px 7px; color:#2e382e; background:#e8c66e; border-radius:2px; font-size:10px; }
 /* Estructura general: encabezado, herramientas y contenido principal. */
@@ -225,8 +225,63 @@ dialog textarea { width:100%; margin-top:6px; padding:9px 12px; resize:vertical;
   #client-dialog .dialog-heading,#client-dialog .dialog-heading + label,#client-dialog form > label,#client-dialog form > .form-grid,#client-dialog .dialog-actions { margin-right:14px; margin-left:14px; }
 }
 #login-screen > .login-aside { background:#c8ebd0!important; }
-.login-logo { padding:18px 26px; background:#fff; border-radius:8px; box-shadow:0 12px 32px rgba(24,49,38,.14); }
+.login-logo { padding:0; background:transparent; border:0; border-radius:0; box-shadow:none; }
 .login-aside-title { color:var(--ink); }
 @media (max-width:760px) {
   #login-screen > .login-aside { background:#c8ebd0!important; }
+}
+
+.prospect-print-dialog { width:min(1120px,calc(100% - 24px)); max-width:none; max-height:92vh; overflow:hidden; }
+.prospect-print-dialog[open] { display:flex; flex-direction:column; }
+.prospect-print-content { display:flex; min-height:0; flex-direction:column; }
+.prospect-print-toolbar { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:20px 24px; border-bottom:1px solid var(--line); }
+.prospect-print-toolbar h2 { margin:0; color:var(--ink); font:700 24px 'Playfair Display',serif; }
+.prospect-print-toolbar .muted { font-size:12px; }
+.prospect-print-actions { display:flex; flex:0 0 auto; gap:8px; }
+.prospect-print-report { min-height:0; overflow:auto; padding:24px; background:#f5f7f4; }
+.prospect-print-cover { display:flex; align-items:center; gap:24px; margin-bottom:20px; padding:22px; background:#fff; border:1px solid var(--line); }
+.prospect-print-cover img { width:180px; max-height:90px; object-fit:contain; }
+.prospect-print-cover h1 { margin:0; color:var(--ink); font:700 clamp(23px,4vw,32px)/1.15 'Playfair Display',serif; }
+.prospect-print-cover p:not(.eyebrow) { margin:7px 0 0; color:var(--muted); font-size:12px; }
+.prospect-print-cover .eyebrow { margin-bottom:4px; }
+.prospect-print-scope { font-weight:700; }
+.prospect-print-client { margin:0 0 18px; padding:20px; background:#fff; border:1px solid var(--line); }
+.prospect-print-client-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding-bottom:12px; border-bottom:2px solid var(--ink); }
+.prospect-print-client-heading h2 { margin:2px 0 0; color:var(--ink); font:700 22px/1.2 'Playfair Display',serif; overflow-wrap:anywhere; }
+.prospect-print-folio { color:var(--muted); font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+.prospect-print-stage { flex:0 0 auto; padding:5px 9px; color:var(--ink); background:#e6eee8; font-size:11px; font-weight:700; }
+.prospect-print-section { margin-top:14px; }
+.prospect-print-section h3 { margin:0 0 7px; color:var(--ink); font-size:12px; }
+.prospect-print-section dl { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 16px; margin:0; }
+.prospect-print-field { min-width:0; padding:5px 0; border-bottom:1px solid #edf0ec; }
+.prospect-print-field dt { color:var(--muted); font-size:10px; font-weight:600; }
+.prospect-print-field dd { margin:2px 0 0; color:#26352b; font-size:12px; white-space:pre-wrap; overflow-wrap:anywhere; }
+@media (max-width:700px) {
+  .prospect-print-dialog { width:calc(100% - 12px); max-height:96vh; }
+  .prospect-print-toolbar { align-items:stretch; flex-direction:column; gap:12px; padding:16px; }
+  .prospect-print-toolbar h2 { font-size:21px; }
+  .prospect-print-actions { flex-wrap:wrap; }
+  .prospect-print-actions .button { flex:1 1 150px; }
+  .prospect-print-report { padding:12px; }
+  .prospect-print-cover { align-items:flex-start; flex-direction:column; gap:12px; padding:16px; }
+  .prospect-print-cover img { width:140px; max-height:70px; }
+  .prospect-print-client { padding:14px; }
+  .prospect-print-client-heading h2 { font-size:19px; }
+  .prospect-print-section dl { grid-template-columns:minmax(0,1fr); }
+}
+@page { size:A4; margin:12mm; }
+@media print {
+  body { min-width:0; color:#222; background:#fff!important; }
+  body > :not(#prospect-print-dialog) { display:none!important; }
+  #prospect-print-dialog { position:static!important; display:block!important; width:auto!important; max-width:none!important; max-height:none!important; margin:0!important; padding:0!important; overflow:visible!important; border:0!important; background:#fff!important; box-shadow:none!important; }
+  .prospect-print-content { display:block; }
+  .prospect-print-toolbar { display:none!important; }
+  .prospect-print-report { overflow:visible; padding:0; background:#fff; }
+  .prospect-print-cover { min-height:230mm; margin:0; padding:18mm; border:0; break-after:page; page-break-after:always; }
+  .prospect-print-cover img { width:180px; }
+  .prospect-print-client { margin:0; padding:0; border:0; break-before:page; page-break-before:always; }
+  .prospect-print-client-first { break-before:auto; page-break-before:auto; }
+  .prospect-print-client-heading { break-after:avoid; page-break-after:avoid; }
+  .prospect-print-section { break-inside:avoid; page-break-inside:avoid; }
+  .prospect-print-field { break-inside:avoid; page-break-inside:avoid; }
 }

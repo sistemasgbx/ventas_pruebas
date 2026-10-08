@@ -89,6 +89,7 @@
       </select>
       <div class="view-switch" role="group" aria-label="Vista de prospectos"><button class="view-switch-active" id="pipeline-view" type="button" aria-pressed="true">Tablero</button><button id="list-view" type="button" aria-pressed="false">Lista</button></div>
       <button class="button button-quiet" id="export-csv" type="button">⬇ Exportar CSV</button>
+      <button class="button button-quiet" id="export-prospects-pdf" type="button">⬇ Imprimir / guardar PDF</button>
       <button class="button button-quiet" id="new-activity" type="button">＋ Registrar actividad</button>
       <button class="button button-quiet" id="new-appointment" type="button">＋ Nueva cita</button>
       <button class="button button-primary" id="new-client">＋ Nuevo prospecto</button>
@@ -317,6 +318,15 @@
     </form>
   </dialog>
   </div>
+  <dialog id="prospect-print-dialog" class="prospect-print-dialog" aria-labelledby="prospect-print-title">
+    <div class="prospect-print-content">
+      <div class="prospect-print-toolbar">
+        <div><p class="eyebrow">Exportación completa</p><h2 id="prospect-print-title">Prospectos para imprimir</h2><p class="muted">Usa “Imprimir / Guardar PDF” y selecciona “Guardar como PDF” en el destino de impresión.</p></div>
+        <div class="prospect-print-actions"><button class="button button-primary" id="print-prospects" type="button">Imprimir / Guardar PDF</button><button class="button button-quiet" id="close-prospect-print" type="button">Cerrar</button></div>
+      </div>
+      <div id="prospect-print-report" class="prospect-print-report"></div>
+    </div>
+  </dialog>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="app.js"></script>
 </body>
