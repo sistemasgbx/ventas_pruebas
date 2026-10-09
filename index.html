@@ -1,92 +1,134 @@
-<!-- ========================================== -->
-<!-- INICIO SECCIÓN: PROSPECTO / EMPRESA        -->
-<!-- ========================================== -->
-<div class="seccion-empresa" id="seccion_empresa" style="margin-bottom: 30px; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; background-color: #f9f9f9;">
-    
-    <h3 style="margin-top: 0; color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px;">1. Datos del Prospecto (Empresa)</h3>
-    <p style="color: #666; font-size: 14px; margin-bottom: 20px;">Llene los datos básicos de la empresa y de la persona de contacto para registrar el nuevo prospecto.</p>
-
-    <!-- DATOS GENERALES DE LA EMPRESA (Originales + RFC) -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 20px;">
-        
-        <div>
-            <label for="empresa_nombre" style="font-weight: bold; display: block; margin-bottom: 5px;">Nombre de la Empresa / Marca *</label>
-            <input type="text" id="empresa_nombre" name="empresa_nombre" placeholder="Ej: Tech Solutions S.A. de C.V." required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-            <small style="color: #777; font-size: 12px; display: block; margin-top: 4px;">El nombre comercial o cómo se conoce a la empresa en el mercado.</small>
-        </div>
-
-        <div>
-            <label for="empresa_rfc" style="font-weight: bold; display: block; margin-bottom: 5px;">Razón Social / RFC</label>
-            <input type="text" id="empresa_rfc" name="empresa_rfc" placeholder="Ej: TSO120345ABC" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-            <small style="color: #777; font-size: 12px; display: block; margin-top: 4px;">Necesario para futuras cotizaciones o facturación (opcional inicial).</small>
-        </div>
-
-        <div>
-            <label for="empresa_sector" style="font-weight: bold; display: block; margin-bottom: 5px;">Sector / Industria *</label>
-            <select id="empresa_sector" name="empresa_sector" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                <option value="">Seleccione una opción...</option>
-                <option value="tecnologia">Tecnología / TI</option>
-                <option value="manufactura">Manufactura / Industrial</option>
-                <option value="comercio">Comercio / Retail</option>
-                <option value="servicios">Servicios Profesionales</option>
-                <option value="otro">Otro</option>
-            </select>
-            <small style="color: #777; font-size: 12px; display: block; margin-top: 4px;">Giro principal al que se dedica la empresa.</small>
-        </div>
-
-        <div>
-            <label for="empresa_web" style="font-weight: bold; display: block; margin-bottom: 5px;">Sitio Web / Red Social</label>
-            <input type="url" id="empresa_web" name="empresa_web" placeholder="Ej: https://www.techsolutions.com" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-            <small style="color: #777; font-size: 12px; display: block; margin-top: 4px;">Página oficial o enlace a su LinkedIn/Facebook.</small>
-        </div>
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="CRM local para administrar clientes y prospectos.">
+  <title>Grubox Corrugados | Clientes y prospectos</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+</head>
+<body>
+  <!-- Pantalla pública: no mostramos el CRM hasta que el servidor confirme la sesión. -->
+  <section id="login-screen" class="login-screen">
+    <div class="login-panel">
+      <p class="eyebrow">Acceso seguro</p>
+      <h1>Bienvenido de nuevo</h1>
+      <p class="muted">Ingresa para continuar con tu seguimiento comercial.</p>
+      <div class="location-notice" role="note">
+        <strong>Aviso de ubicación</strong>
+        <p>Si tu cuenta es de vendedor, al iniciar sesión se solicitará permiso al navegador para registrar una ubicación. Se guardará una sola vez por sesión de acceso; el administrador podrá consultar la última ubicación y su historial.</p>
+      </div>
+      <form id="login-form" class="login-form">
+        <label>Usuario<input name="username" required autocomplete="username" placeholder="Tu usuario"></label>
+        <label>Contraseña<input name="password" type="password" required autocomplete="current-password" placeholder="Tu contraseña"></label>
+        <label class="notice-confirmation"><input name="location_notice" type="checkbox" required> He leído y entiendo el aviso de ubicación.</label>
+        <p id="login-error" class="form-error" hidden></p>
+        <button class="button button-primary" type="submit">Entrar al sistema <span aria-hidden="true">→</span></button>
+      </form>
+      <p class="login-footnote">Sistema local · acceso por roles</p>
     </div>
-
-    <!-- DATOS DEL CONTACTO (Nuevos campos indispensables) -->
-    <h4 style="margin-top: 30px; color: #444;">Datos del Contacto Principal</h4>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 20px;">
+    <div class="login-aside"><div class="login-brand"><span class="login-logo"><img src="grubox.png" alt="Grubox Corrugados"></span></div><strong class="login-aside-title">Control de ventas<br>y prospectos</strong></div>
+  </section>
+ 
+  <!-- Todo el contenido protegido vive dentro de este contenedor. -->
+  <div id="app-shell" hidden>
+  <header class="topbar">
+    <a class="brand" href="index.html" aria-label="Grubox CRM, inicio">
+      <span class="brand-mark"><img src="grubox.png" alt="Grubox Corrugados"></span>
+      <span><strong>Grubox</strong><small>Control de ventas y prospectos</small></span>
+    </a>
+    <nav aria-label="Navegación principal">
+      <a href="#dashboard" data-view="dashboard">Dashboard</a>
+      <a href="#clients" class="active" data-view="clients">Clientes</a>
+      <a href="#today" data-view="today">Seguimiento <span id="today-badge" class="nav-badge" hidden></span></a>
+      <a href="#appointments" data-view="appointments">Citas</a>
+      <a href="#kpis" data-view="kpis">Indicadores</a>
+      <a href="#movements" data-view="movements">Movimientos</a>
+      <a href="#locations" data-view="locations" data-admin-only>Ubicaciones</a>
+      <a href="#audit" data-view="audit" data-admin-only>Auditoría</a>
+      <a href="#users" data-view="users" data-admin-only>Usuarios</a>
+    </nav>
+    <div class="user-chip"><span class="status-dot"></span><span id="user-name"></span> <span id="user-role" class="role"></span><button id="account-button" class="account-button">Mi cuenta</button><button id="logout" class="logout-button" title="Cerrar sesión">Salir</button></div>
+  </header>
+ 
+  <main class="shell">
+    <!-- Las secciones comparten espacio; JavaScript muestra solo la vista elegida. -->
+    <section class="page-heading" data-page="clients">
+      <div>
+        <p class="eyebrow">Ventas / Seguimiento</p>
+        <h1>Clientes y prospectos</h1>
+        <p class="muted">Administra tus oportunidades y mantén cada conversación en movimiento.</p>
+      </div>
+      <time id="today" class="date-label"></time>
+    </section>
+ 
+    <section class="toolbar" aria-label="Herramientas de clientes" data-page="clients">
+      <label class="search-box"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Buscar empresa o contacto..." autocomplete="off"></label>
+      <select id="stage-filter" aria-label="Filtrar por etapa">
+        <option value="all">Todas las etapas</option>
+        <option value="new">Nuevo</option>
+        <option value="negotiation">En negociación</option>
+        <option value="quoted">Cotizado</option>
+        <option value="won">Ganado</option>
+        <option value="lost">Perdido</option>
+      </select>
+      <select id="follow-filter" aria-label="Filtrar por seguimiento">
+        <option value="all">Todos los seguimientos</option>
+        <option value="overdue">Vencidos</option>
+        <option value="today">Para hoy</option>
+        <option value="unscheduled">Sin seguimiento</option>
+        <option value="stale">Sin actividad</option>
+      </select>
+      <section class="client-form-step" data-form-step="0">
+        <h3 class="form-section-title">Datos de la empresa y contacto</h3>
         
-        <div>
-            <label for="contacto_nombre" style="font-weight: bold; display: block; margin-bottom: 5px;">Nombre del Contacto *</label>
-            <input type="text" id="contacto_nombre" name="contacto_nombre" placeholder="Ej: Roberto Gómez" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-            <small style="color: #777; font-size: 12px; display: block; margin-top: 4px;">Persona con la que darás el seguimiento directo.</small>
+        <!-- Campos originales + Sitio web y RFC -->
+        <label>Nombre de la empresa / razón social<input name="company" maxlength="80" placeholder="Ej. Comercializadora del Centro"></label>
+        <div class="form-grid">
+            <label>Sitio web<input name="website" type="url" maxlength="120" placeholder="Ej. https://www.empresa.com"></label>
+            <label>RFC (Opcional)<input name="rfc" maxlength="20" placeholder="Ej. XEXX010101000"></label>
         </div>
 
-        <div>
-            <label for="contacto_puesto" style="font-weight: bold; display: block; margin-bottom: 5px;">Puesto / Cargo</label>
-            <input type="text" id="contacto_puesto" name="contacto_puesto" placeholder="Ej: Gerente de Compras" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-            <small style="color: #777; font-size: 12px; display: block; margin-top: 4px;">Ayuda a medir el nivel de decisión de la persona.</small>
+        <!-- Campos originales de contacto agrupados con el nuevo Puesto -->
+        <div class="form-grid">
+            <label>Persona de contacto<input name="contact" maxlength="60" placeholder="Nombre de contacto"></label>
+            <label>Puesto / Cargo del contacto<input name="contactRole" maxlength="60" placeholder="Ej. Gerente de Compras"></label>
         </div>
 
-        <div>
-            <label for="contacto_email" style="font-weight: bold; display: block; margin-bottom: 5px;">Correo Electrónico *</label>
-            <input type="email" id="contacto_email" name="contacto_email" placeholder="Ej: roberto@techsolutions.com" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-            <small style="color: #777; font-size: 12px; display: block; margin-top: 4px;">Email principal para enviar cotizaciones y propuestas.</small>
+        <!-- Campos originales exactos -->
+        <div class="form-grid">
+            <label>Medio de contacto
+                <select name="preferredContact">
+                    <option value="">Sin especificar</option>
+                    <option value="call">Llamada</option>
+                    <option value="whatsapp">WhatsApp</option>
+                    <option value="email">Correo electrónico</option>
+                    <option value="visit">Visita</option>
+                    <option value="facebook">Facebook</option>
+                    <option value="linkedin">LinkedIn</option>
+                    <option value="tiktok">TikTok</option>
+                    <option value="instagram">Instagram</option>
+                </select>
+            </label>
+            <label>Teléfono de contacto<input name="contactPhone" type="tel" maxlength="25" placeholder="Teléfono o celular"></label>
         </div>
-
-        <div>
-            <label for="contacto_celular" style="font-weight: bold; display: block; margin-bottom: 5px;">Celular / WhatsApp *</label>
-            <input type="tel" id="contacto_celular" name="contacto_celular" placeholder="Ej: 55 9876 5432" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-            <small style="color: #777; font-size: 12px; display: block; margin-top: 4px;">Teléfono directo para llamadas o mensajes rápidos.</small>
+        <div class="form-grid">
+            <label>Correo de contacto<input name="email" type="email" maxlength="120" placeholder="contacto@empresa.com"></label>
+            <label>Número de la empresa<input name="companyPhone" type="tel" maxlength="25" placeholder="Teléfono general"></label>
         </div>
-    </div>
+        
+        <label>Ubicación de la empresa<input name="companyLocation" maxlength="180" placeholder="Ciudad, estado o dirección"></label>
 
-    <!-- ORIGEN DEL PROSPECTO (Nuevo campo indispensable para métricas) -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
-        <div>
-            <label for="empresa_origen" style="font-weight: bold; display: block; margin-bottom: 5px;">Origen del Prospecto</label>
-            <select id="empresa_origen" name="empresa_origen" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+        <!-- Nuevo campo: Origen -->
+        <label>Origen del prospecto
+            <select name="leadSource">
                 <option value="">¿Cómo nos conoció?</option>
-                <option value="recomendacion">Recomendación</option>
-                <option value="redes_sociales">Redes Sociales (Facebook, Instagram, LinkedIn)</option>
-                <option value="google">Búsqueda en Google / Sitio Web</option>
-                <option value="llamada_fria">Prospección Directa (Llamada Fría)</option>
+                <option value="recomendacion">Recomendación / Referido</option>
+                <option value="busqueda">Búsqueda (Google / Sitio Web)</option>
+                <option value="redes">Redes Sociales</option>
+                <option value="prospeccion">Prospección (Llamada / Visita en frío)</option>
                 <option value="otro">Otro</option>
             </select>
-            <small style="color: #777; font-size: 12px; display: block; margin-top: 4px;">Clave para identificar qué estrategias de marketing te funcionan mejor.</small>
-        </div>
-    </div>
-
-</div>
-<!-- ========================================== -->
-<!-- FIN SECCIÓN: PROSPECTO / EMPRESA           -->
-<!-- ========================================== -->
+        </label>
+      </section>
