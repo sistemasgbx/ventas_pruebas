@@ -871,7 +871,11 @@ async function showProspectPrintPreview(button) {
       <img src="grubox.png" alt="Grubox Corrugados">
       <div><p class="eyebrow">Reporte comercial</p><h1>Prospectos y oportunidades</h1>
       <p>${items.length} prospecto(s) · todas las etapas · Generado el ${escapeHtml(formatCalendarDate(todayIso()))}</p>
-      <p class="prospect-print-scope">${currentUser?.role === 'admin' ? 'Incluye los prospectos del equipo.' : 'Incluye tus prospectos.'}</p></div>
+      <p class="prospect-print-scope">${currentUser?.role === 'admin' ? 'Incluye los prospectos del equipo.' : 'Incluye tus prospectos.'}</p>
+      <figure class="prospect-print-measure-example">
+        <figcaption>Ejemplo de formato para las medidas (solo referencia)</figcaption>
+        <img src="prospect-measure-example.png" alt="Ejemplo de medidas: 70 x 47.5 x 51">
+      </figure></div>
     </header>${items.map(renderProspectPrintCard).join('')}`;
     document.querySelector('#prospect-print-title').textContent = `Prospectos para imprimir · ${first.total}`;
     if (!dialog.open) dialog.showModal();

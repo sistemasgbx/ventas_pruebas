@@ -47,7 +47,7 @@ CERT_DIR = BASE_DIR / '.cert'
 SESSIONS = {}
 # Solo estos archivos se entregan al navegador. Si agregas otro archivo a la
 # interfaz (otro .js, un ícono), súmalo aquí o responderá 404.
-PUBLIC_FILES = {'index.html', 'app.js', 'styles.css', 'grubox.png'}
+PUBLIC_FILES = {'index.html', 'app.js', 'styles.css', 'grubox.png', 'prospect-measure-example.png'}
 LOGIN_ATTEMPTS = {}
 MAX_LOGIN_FAILURES = 5
 LOGIN_LOCK_SECONDS = 300

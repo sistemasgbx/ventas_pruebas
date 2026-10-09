@@ -1,334 +1,92 @@
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="CRM local para administrar clientes y prospectos.">
-  <title>Grubox Corrugados | Clientes y prospectos</title>
-  <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-</head>
-<body>
-  <!-- Pantalla pública: no mostramos el CRM hasta que el servidor confirme la sesión. -->
-  <section id="login-screen" class="login-screen">
-    <div class="login-panel">
-      <p class="eyebrow">Acceso seguro</p>
-      <h1>Bienvenido de nuevo</h1>
-      <p class="muted">Ingresa para continuar con tu seguimiento comercial.</p>
-      <div class="location-notice" role="note">
-        <strong>Aviso de ubicación</strong>
-        <p>Si tu cuenta es de vendedor, al iniciar sesión se solicitará permiso al navegador para registrar una ubicación. Se guardará una sola vez por sesión de acceso; el administrador podrá consultar la última ubicación y su historial.</p>
-      </div>
-      <form id="login-form" class="login-form">
-        <label>Usuario<input name="username" required autocomplete="username" placeholder="Tu usuario"></label>
-        <label>Contraseña<input name="password" type="password" required autocomplete="current-password" placeholder="Tu contraseña"></label>
-        <label class="notice-confirmation"><input name="location_notice" type="checkbox" required> He leído y entiendo el aviso de ubicación.</label>
-        <p id="login-error" class="form-error" hidden></p>
-        <button class="button button-primary" type="submit">Entrar al sistema <span aria-hidden="true">→</span></button>
-      </form>
-      <p class="login-footnote">Sistema local · acceso por roles</p>
+<!-- ========================================== -->
+<!-- INICIO SECCIÓN: PROSPECTO / EMPRESA        -->
+<!-- ========================================== -->
+<div class="seccion-empresa" id="seccion_empresa" style="margin-bottom: 30px; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; background-color: #f9f9f9;">
+    
+    <h3 style="margin-top: 0; color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px;">1. Datos del Prospecto (Empresa)</h3>
+    <p style="color: #666; font-size: 14px; margin-bottom: 20px;">Llene los datos básicos de la empresa y de la persona de contacto para registrar el nuevo prospecto.</p>
+
+    <!-- DATOS GENERALES DE LA EMPRESA (Originales + RFC) -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 20px;">
+        
+        <div>
+            <label for="empresa_nombre" style="font-weight: bold; display: block; margin-bottom: 5px;">Nombre de la Empresa / Marca *</label>
+            <input type="text" id="empresa_nombre" name="empresa_nombre" placeholder="Ej: Tech Solutions S.A. de C.V." required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            <small style="color: #777; font-size: 12px; display: block; margin-top: 4px;">El nombre comercial o cómo se conoce a la empresa en el mercado.</small>
+        </div>
+
+        <div>
+            <label for="empresa_rfc" style="font-weight: bold; display: block; margin-bottom: 5px;">Razón Social / RFC</label>
+            <input type="text" id="empresa_rfc" name="empresa_rfc" placeholder="Ej: TSO120345ABC" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            <small style="color: #777; font-size: 12px; display: block; margin-top: 4px;">Necesario para futuras cotizaciones o facturación (opcional inicial).</small>
+        </div>
+
+        <div>
+            <label for="empresa_sector" style="font-weight: bold; display: block; margin-bottom: 5px;">Sector / Industria *</label>
+            <select id="empresa_sector" name="empresa_sector" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                <option value="">Seleccione una opción...</option>
+                <option value="tecnologia">Tecnología / TI</option>
+                <option value="manufactura">Manufactura / Industrial</option>
+                <option value="comercio">Comercio / Retail</option>
+                <option value="servicios">Servicios Profesionales</option>
+                <option value="otro">Otro</option>
+            </select>
+            <small style="color: #777; font-size: 12px; display: block; margin-top: 4px;">Giro principal al que se dedica la empresa.</small>
+        </div>
+
+        <div>
+            <label for="empresa_web" style="font-weight: bold; display: block; margin-bottom: 5px;">Sitio Web / Red Social</label>
+            <input type="url" id="empresa_web" name="empresa_web" placeholder="Ej: https://www.techsolutions.com" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            <small style="color: #777; font-size: 12px; display: block; margin-top: 4px;">Página oficial o enlace a su LinkedIn/Facebook.</small>
+        </div>
     </div>
-    <div class="login-aside"><div class="login-brand"><span class="login-logo"><img src="grubox.png" alt="Grubox Corrugados"></span></div><strong class="login-aside-title">Control de ventas<br>y prospectos</strong></div>
-  </section>
- 
-  <!-- Todo el contenido protegido vive dentro de este contenedor. -->
-  <div id="app-shell" hidden>
-  <header class="topbar">
-    <a class="brand" href="index.html" aria-label="Grubox CRM, inicio">
-      <span class="brand-mark"><img src="grubox.png" alt="Grubox Corrugados"></span>
-      <span><strong>Grubox</strong><small>Control de ventas y prospectos</small></span>
-    </a>
-    <nav aria-label="Navegación principal">
-      <a href="#dashboard" data-view="dashboard">Dashboard</a>
-      <a href="#clients" class="active" data-view="clients">Clientes</a>
-      <a href="#today" data-view="today">Seguimiento <span id="today-badge" class="nav-badge" hidden></span></a>
-      <a href="#appointments" data-view="appointments">Citas</a>
-      <a href="#kpis" data-view="kpis">Indicadores</a>
-      <a href="#movements" data-view="movements">Movimientos</a>
-      <a href="#locations" data-view="locations" data-admin-only>Ubicaciones</a>
-      <a href="#audit" data-view="audit" data-admin-only>Auditoría</a>
-      <a href="#users" data-view="users" data-admin-only>Usuarios</a>
-    </nav>
-    <div class="user-chip"><span class="status-dot"></span><span id="user-name"></span> <span id="user-role" class="role"></span><button id="account-button" class="account-button">Mi cuenta</button><button id="logout" class="logout-button" title="Cerrar sesión">Salir</button></div>
-  </header>
- 
-  <main class="shell">
-    <!-- Las secciones comparten espacio; JavaScript muestra solo la vista elegida. -->
-    <section class="page-heading" data-page="clients">
-      <div>
-        <p class="eyebrow">Ventas / Seguimiento</p>
-        <h1>Clientes y prospectos</h1>
-        <p class="muted">Administra tus oportunidades y mantén cada conversación en movimiento.</p>
-      </div>
-      <time id="today" class="date-label"></time>
-    </section>
- 
-    <section class="toolbar" aria-label="Herramientas de clientes" data-page="clients">
-      <label class="search-box"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Buscar empresa o contacto..." autocomplete="off"></label>
-      <select id="stage-filter" aria-label="Filtrar por etapa">
-        <option value="all">Todas las etapas</option>
-        <option value="new">Nuevo</option>
-        <option value="negotiation">En negociación</option>
-        <option value="quoted">Cotizado</option>
-        <option value="won">Ganado</option>
-        <option value="lost">Perdido</option>
-      </select>
-      <select id="follow-filter" aria-label="Filtrar por seguimiento">
-        <option value="all">Todos los seguimientos</option>
-        <option value="overdue">Vencidos</option>
-        <option value="today">Para hoy</option>
-        <option value="unscheduled">Sin seguimiento</option>
-        <option value="stale">Sin actividad</option>
-      </select>
-      <select id="owner-filter" data-admin-only hidden aria-label="Filtrar por vendedor"><option value="all">Todos los vendedores</option></select>
-      <select id="sort-filter" aria-label="Ordenar">
-        <option value="default">Orden: más recientes</option>
-        <option value="value">Mayor valor</option>
-        <option value="company">Empresa A–Z</option>
-        <option value="call">Próximo contacto</option>
-      </select>
-      <div class="view-switch" role="group" aria-label="Vista de prospectos"><button class="view-switch-active" id="pipeline-view" type="button" aria-pressed="true">Tablero</button><button id="list-view" type="button" aria-pressed="false">Lista</button></div>
-      <button class="button button-quiet" id="export-csv" type="button">⬇ Exportar CSV</button>
-      <button class="button button-quiet" id="export-prospects-pdf" type="button">⬇ Imprimir / guardar PDF</button>
-      <button class="button button-quiet" id="new-activity" type="button">＋ Registrar actividad</button>
-      <button class="button button-quiet" id="new-appointment" type="button">＋ Nueva cita</button>
-      <button class="button button-primary" id="new-client">＋ Nuevo prospecto</button>
-    </section>
- 
-    <section id="seller-location-panel" class="location-share" data-seller-only hidden data-page="clients">
-      <div><p class="eyebrow">Ubicación de trabajo</p><h2>Registro de ubicación</h2><p id="location-status" class="muted">Al iniciar sesión se registrará una ubicación por sesión.</p></div>
-      <div class="location-actions"><button id="start-location" class="button button-primary" type="button">Reintentar ubicación</button></div>
-    </section>
- 
-    <section class="summary" aria-label="Resumen" data-page="clients">
-      <div><span>Oportunidades</span><strong id="total-count">0</strong></div>
-      <div><span>Dinero ganado</span><strong id="won-value">$0</strong></div>
-      <div><span>Dinero en oportunidades activas</span><strong id="active-value">$0</strong></div>
-      <div><span>Dinero perdido</span><strong id="lost-value">$0</strong></div>
-      <div><span>Pronóstico ponderado</span><strong id="forecast-value">$0</strong></div>
-      <div><span>Tasa de cierre</span><strong id="win-rate">0%</strong></div>
-    </section>
- 
-    <section id="pipeline" class="pipeline" aria-label="Tablero de ventas" data-page="clients"></section>
-    <p id="empty-state" class="empty-state" hidden data-page="clients">No encontramos prospectos con esos criterios.</p>
-    <nav id="client-pagination" class="client-pagination" aria-label="Paginación de prospectos" data-page="clients">
-      <span id="client-page-status" aria-live="polite"></span>
-      <div><button id="client-page-prev" class="button button-quiet" type="button" aria-label="Página anterior">Anterior</button><span id="client-page-number"></span><button id="client-page-next" class="button button-quiet" type="button" aria-label="Página siguiente">Siguiente</button></div>
-    </nav>
-    <section id="today-page" class="today-page" data-page="today" hidden></section>
-    <section id="appointments-page" class="appointments-page" data-page="appointments" hidden></section>
-    <section id="dashboard-page" class="dashboard-page" data-page="dashboard" hidden></section>
-    <section id="kpis-page" class="kpis-page" data-page="kpis" hidden></section>
-    <section id="locations-page" class="locations-page" data-page="locations" hidden></section>
-    <section id="audit-page" class="audit-page" data-page="audit" hidden></section>
-    <section id="users-page" class="users-page" data-page="users" hidden></section>
-    <section id="movements-page" class="movements-page" data-page="movements" hidden></section>
-    <div id="analysis-render-target" hidden></div>
-    <p class="local-note"><span aria-hidden="true">●</span> Datos protegidos en la base de datos del sistema</p>
-  </main>
- 
-  <!-- Alta de oportunidades organizada en tres etapas de captura. -->
-  <dialog id="client-dialog">
-    <form id="client-form" method="dialog">
-      <div class="dialog-heading"><div><p class="eyebrow">Nueva oportunidad</p><h2>Agregar prospecto</h2><p id="client-step-caption" class="muted">Paso 1 de 3 · Datos de la empresa</p></div><button type="button" class="close-button" id="close-dialog" aria-label="Cerrar">×</button></div>
-      <input name="clientId" type="hidden">
-      <div class="wizard-progress" aria-label="Progreso del formulario"><span class="wizard-step-active">1. Empresa</span><span>2. Checklist</span><span>3. Pipeline</span></div>
-      <section class="client-form-step" data-form-step="0">
-        <h3 class="form-section-title">Datos de la empresa y contacto</h3>
-        <label>Nombre de la empresa / razón social<input name="company" maxlength="80" placeholder="Ej. Comercializadora del Centro"></label>
-        <label>Persona de contacto<input name="contact" maxlength="60" placeholder="Nombre de contacto"></label>
-        <div class="form-grid"><label>Medio de contacto<select name="preferredContact"><option value="">Sin especificar</option><option value="call">Llamada</option><option value="whatsapp">WhatsApp</option><option value="email">Correo electrónico</option><option value="visit">Visita</option><option value="facebook">Facebook</option><option value="linkedin">LinkedIn</option><option value="tiktok">TikTok</option><option value="instagram">Instagram</option></select></label><label>Teléfono de contacto<input name="contactPhone" type="tel" maxlength="25" placeholder="Teléfono o celular"></label></div>
-        <div class="form-grid"><label>Correo de contacto<input name="email" type="email" maxlength="120" placeholder="contacto@empresa.com"></label><label>Número de la empresa<input name="companyPhone" type="tel" maxlength="25" placeholder="Teléfono general"></label></div>
-        <label>Ubicación de la empresa<input name="companyLocation" maxlength="180" placeholder="Ciudad, estado o dirección"></label>
-      </section>
-      <section class="client-form-step" data-form-step="1" hidden>
-        <h3 class="form-section-title">Checklist para cotizar</h3>
-        <label class="inline-checkbox"><input name="useCompanyLocation" type="checkbox"> Usar la ubicación de la empresa como dirección de entrega</label>
-        <label>Dirección de entrega<input name="deliveryAddress" maxlength="180"></label>
-        <label>Condiciones y/o especificaciones de entrega<input name="deliveryConditions" maxlength="240" placeholder="Ej. Emplayado y entarimado"></label>
-        <label>Especificaciones detalladas a cotizar<textarea name="quoteSpecifications" maxlength="1000" rows="3"></textarea></label>
-        <div class="form-grid"><label>Flauta<input name="flute" maxlength="40"></label><label>Número de tintas<input name="inkCount" type="number" min="0" step="1"></label></div>
-        <div class="form-grid"><label>Medidas internas<input name="internalDimensions" maxlength="100"></label><label>Medidas externas<input name="externalDimensions" maxlength="100"></label></div>
-        <div class="form-grid"><label>¿Muestra física?<select name="sampleProvided"><option value="">Sin especificar</option><option value="0">No</option><option value="1">Sí</option></select></label><label>Tipo de liner<input name="linerType" maxlength="80"></label></div>
-        <div class="form-grid"><label>Tratamiento Mikelman<select name="mikelmanTreatment"><option value="">Sin especificar</option><option value="0">No</option><option value="1">Sí</option></select></label><label>Tarima<input name="pallet" maxlength="80"></label></div>
-        <div class="form-grid"><label>Volumen / cantidad de piezas<input name="estimatedQuantity" type="number" min="1" step="1" placeholder="0"></label><label>Periodicidad<input name="periodicity" maxlength="60" placeholder="Ej. Mensual"></label></div>
-        <div class="form-grid"><label>Forma de pago<input name="paymentTerms" maxlength="80"></label><label>Altura máxima de tarima<input name="maxPalletHeight" maxlength="40" placeholder="Ej. 1.2 cm"></label></div>
-        <div class="form-grid"><label>Precio estimado por pieza (MXN)<input name="targetPrice" type="number" min="0.01" step="0.01" placeholder="0.00"></label><label>Tipo de caja / producto<input name="boxType" maxlength="100" placeholder="Ej. Caja troquelada"></label></div>
-        <label>¿El cliente entregó un plano?<select name="drawingProvided"><option value="">Sin especificar</option><option value="0">No</option><option value="1">Sí</option></select></label>
-      </section>
-      <section class="client-form-step" data-form-step="2" hidden>
-        <h3 class="form-section-title">Pipeline comercial</h3>
-        <label>Etapa de negociación<select name="stage" id="client-stage"><option value="new">Nuevo</option><option value="negotiation">En negociación</option><option value="quoted">Cotizado</option><option value="won">Ganado</option><option value="lost">Perdido</option></select></label>
-        <label id="new-won-value-field" hidden>Importe real vendido (MXN)<input name="wonValue" type="number" min="0" step="1" placeholder="Importe confirmado del pedido"></label>
-        <label id="new-lost-reason-field" hidden>Motivo de pérdida<input name="lostReason" maxlength="100" placeholder="Ej. Precio o tiempo de entrega"></label>
-        <div class="form-grid"><label>Tipo de oportunidad<input name="opportunityType" maxlength="80" placeholder="Ej. Cliente nuevo"></label><label>Industria / sector del cliente<input name="industry" maxlength="80" placeholder="Ej. Alimentos, automotriz"></label></div>
-        <label>¿El producto o medida difiere del tipo capturado en Checklist?<select name="productMeasureDifferent"><option value="0">No, usar lo capturado en Checklist</option><option value="1">Sí, agregar un detalle distinto</option></select></label>
-        <label id="product-measure-field" hidden>Detalle de producto / medida (solo si es distinto)<input name="productMeasure" maxlength="120"></label>
-        <div class="form-grid"><label>Valor estimado de oportunidad (MXN)<input name="value" type="number" min="0" step="1" placeholder="0" readonly aria-describedby="opportunity-value-help"></label><label>Probabilidad (%)<input name="probability" type="number" min="0" max="100" step="1" value="0"></label></div>
-        <small id="opportunity-value-help" class="field-help">Se calcula como precio por pieza × volumen y se usa como valor estimado de la oportunidad.</small>
-        <label>Forecast ponderado (MXN)<input name="weightedForecast" type="number" readonly value="0" aria-describedby="forecast-help"><small id="forecast-help" class="field-help">Se calcula con el valor estimado de oportunidad y la probabilidad.</small></label>
-        <label>Fecha estimada de cierre<input name="estimatedCloseDate" type="date"></label>
-        <label>Motivo / siguiente acción<input name="nextAction" maxlength="120" placeholder="Ej. Enviar cotización el viernes"></label>
-        <div class="form-grid"><label>Fecha de seguimiento<input name="callDate" type="date"></label><label>Hora de seguimiento<input name="callTime" type="time"></label></div>
-        <label>Observaciones<textarea name="pinnedNote" maxlength="500" rows="3"></textarea></label>
-        <label>Estado del pipeline<input id="client-pipeline-status" value="Activo" readonly></label>
-      </section>
-      <div class="dialog-actions wizard-actions"><button type="button" class="button button-quiet" id="cancel-dialog">Cancelar</button><button type="button" class="button button-quiet" id="client-step-back" hidden>Anterior</button><button type="button" class="button button-quiet" id="client-save-progress">Guardar avance</button><button type="button" class="button button-primary" id="client-step-next">Siguiente</button><button class="button button-primary" id="client-submit" type="button" hidden>Guardar oportunidad</button></div>
-    </form>
-  </dialog>
-  <dialog id="appointment-dialog">
-    <form id="appointment-form" method="dialog">
-      <div class="dialog-heading"><div><p class="eyebrow">Agenda comercial</p><h2>Programar cita</h2></div><button type="button" class="close-button" id="appointment-close" aria-label="Cerrar">×</button></div>
-      <label>Cliente / prospecto<select name="client_id" id="appointment-client" required></select></label>
-      <div class="form-grid"><label>Fecha<input name="appointment_date" type="date" required></label><label>Hora<input name="appointment_time" type="time" required></label></div>
-      <div class="form-grid"><label>Tipo de cita<select name="appointment_type" required><option value="Presentación">Presentación</option><option value="Seguimiento">Seguimiento</option><option value="Demostración">Demostración</option><option value="Cierre">Cierre</option></select></label><label>Etapa<select name="stage" required><option value="new">Nuevo</option><option value="negotiation">En negociación</option><option value="quoted">Cotizado</option><option value="won">Ganado</option><option value="lost">Perdido</option></select></label></div>
-      <label>Venta estimada (MXN)<input name="estimated_sale" type="number" min="0" step="100" required value="0"></label>
-      <label>Notas<textarea name="note" maxlength="500" rows="3" placeholder="Acuerdos o preparación para la cita"></textarea></label>
-      <div class="dialog-actions"><button type="button" class="button button-quiet" id="appointment-cancel">Cancelar</button><button class="button button-primary" type="submit">Guardar cita</button></div>
-    </form>
-  </dialog>
-  <dialog id="appointment-result-dialog">
-    <form id="appointment-result-form" method="dialog">
-      <div class="dialog-heading"><div><p class="eyebrow">Cierre de reunión</p><h2 id="appointment-result-title">Registrar resultado</h2></div><button type="button" class="close-button" id="appointment-result-close" aria-label="Cerrar">×</button></div>
-      <input name="appointment_id" id="appointment-result-id" type="hidden">
-      <p id="appointment-result-context" class="field-help"></p>
-      <label>Resultado de la cita<select name="result" id="appointment-result-status" required><option value="completed">Realizada</option><option value="rescheduled">Reprogramada</option><option value="canceled">Cancelada</option></select></label>
-      <label>Etapa comercial después de la cita<select name="stage" id="appointment-result-stage" required><option value="new">Nuevo</option><option value="negotiation">En negociación</option><option value="quoted">Cotizado</option><option value="won">Ganado</option><option value="lost">Perdido</option></select></label>
-      <label id="appointment-result-won-field" hidden>Importe real vendido (MXN)<input name="won_value" type="number" min="0" step="1"></label>
-      <label id="appointment-result-lost-field" hidden>Motivo de pérdida<input name="lost_reason" maxlength="100" placeholder="Ej. Precio, competencia, sin presupuesto"></label>
-      <label>Qué ocurrió / acuerdos<textarea name="result_note" id="appointment-result-note" maxlength="1000" rows="4" placeholder="Necesidad confirmada, objeciones, acuerdos y compromisos"></textarea></label>
-      <label>Próxima acción<input name="next_action" id="appointment-result-next-action" maxlength="120" placeholder="Ej. Enviar cotización actualizada"></label>
-      <div class="form-grid"><label>Próximo contacto<input name="follow_up_date" id="appointment-result-date" type="date"></label><label>Hora<input name="follow_up_time" id="appointment-result-time" type="time"></label></div>
-      <div class="dialog-actions"><button type="button" class="button button-quiet" id="appointment-result-cancel">Cancelar</button><button class="button button-primary" type="submit">Guardar resultado</button></div>
-    </form>
-  </dialog>
-  <dialog id="activity-dialog">
-    <form id="activity-form" method="dialog">
-      <div class="dialog-heading"><div><p class="eyebrow">Actividad comercial</p><h2>Registrar actividad</h2></div><button type="button" class="close-button" id="activity-close" aria-label="Cerrar">×</button></div>
-      <label>Cliente / prospecto<select name="client_id" id="activity-client" required></select></label>
-      <label>Actividad<select name="activity_type" id="activity-type" required><option value="prospecting_call">Llamada de prospección</option><option value="prospecting_email">Correo de prospección</option><option value="effective_contact">Contacto efectivo</option><option value="quote_sent">Cotización enviada</option><option value="sample_requested">Muestra / prototipo solicitado</option></select></label>
-      <label id="quote-amount-field" hidden>Monto cotizado (MXN)<input name="amount" id="quote-amount" type="number" min="1" step="1" value=""></label>
-      <label>Nota o resultado<textarea name="note" maxlength="500" rows="3" placeholder="Detalle breve de la actividad"></textarea></label>
-      <div class="dialog-actions"><button type="button" class="button button-quiet" id="activity-cancel">Cancelar</button><button class="button button-primary" type="submit">Guardar actividad</button></div>
-    </form>
-  </dialog>
-  <dialog id="follow-up-dialog">
-    <form id="follow-up-form" method="dialog">
-      <div class="dialog-heading"><div><p class="eyebrow">Registro de seguimiento</p><h2 id="follow-up-company"></h2></div><button type="button" class="close-button" id="follow-up-close" aria-label="Cerrar">×</button></div>
-      <input id="follow-up-id" name="client_id" type="hidden">
-      <div id="follow-up-contact" class="contact-actions"></div>
-      <div class="form-grid"><label>Medio de contacto<select id="follow-up-type" name="activity_type" required><option value="call">Llamada</option><option value="whatsapp">WhatsApp</option><option value="email">Correo electrónico</option><option value="visit">Visita</option><option value="meeting">Reunión</option><option value="other">Otro</option></select></label><label>Resultado<select id="follow-up-outcome" name="outcome" required><option value="contacted">Contacto realizado</option><option value="no_answer">Sin respuesta</option><option value="quote_requested">Solicitó cotización</option><option value="quote_sent">Cotización enviada</option><option value="sample_requested">Solicitó muestra</option><option value="awaiting_customer">En espera del cliente</option><option value="meeting_scheduled">Reunión programada</option><option value="resolved">Seguimiento resuelto</option></select></label></div>
-      <label>Detalle del seguimiento<textarea id="call-note" name="note" maxlength="1000" rows="3" placeholder="Acuerdos, necesidades, objeciones o información relevante" required></textarea></label>
-      <label>Próxima acción<input id="follow-up-next-action" name="next_action" maxlength="120" placeholder="Ej. Enviar propuesta con medidas actualizadas" required></label>
-      <div class="chip-row" id="next-action-chips">
-        <button type="button" class="chip" data-action-text="Enviar cotización">Enviar cotización</button>
-        <button type="button" class="chip" data-action-text="Confirmar recepción de muestra">Confirmar muestra</button>
-        <button type="button" class="chip" data-action-text="Llamar para resolver dudas">Resolver dudas</button>
-        <button type="button" class="chip" data-action-text="Programar visita">Programar visita</button>
-      </div>
-      <div class="form-grid"><label>Próximo contacto<input id="call-date" name="call_date" type="date"></label><label>Hora<input id="call-time" name="call_time" type="time"></label></div>
-      <div class="chip-row" id="date-chips">
-        <button type="button" class="chip" data-days="1">Mañana</button>
-        <button type="button" class="chip" data-days="3">En 3 días</button>
-        <button type="button" class="chip" data-days="7">En 1 semana</button>
-        <button type="button" class="chip" data-days="15">En 15 días</button>
-      </div>
-      <h3 class="history-title">Movimientos recientes</h3><ul id="follow-up-history" class="follow-up-history"></ul>
-      <div class="dialog-actions"><button type="button" class="button button-quiet" id="follow-up-cancel">Cancelar</button><button class="button button-primary" type="submit">Guardar seguimiento</button></div>
-    </form>
-  </dialog>
-  <dialog id="sale-dialog">
-    <form id="sale-form" method="dialog">
-      <div class="dialog-heading"><div><p class="eyebrow">Cierre comercial</p><h2 id="sale-company">Confirmar venta</h2></div><button type="button" class="close-button" id="sale-close" aria-label="Cerrar">×</button></div>
-      <input name="client_id" id="sale-client-id" type="hidden">
-      <label>Importe real vendido (MXN)<input name="won_value" type="number" min="0" step="1" required placeholder="Importe confirmado del pedido"></label>
-      <p class="field-help">Este importe se registra como venta real y alimenta los indicadores, separado del valor estimado.</p>
-      <div class="dialog-actions"><button type="button" class="button button-quiet" id="sale-cancel">Cancelar</button><button class="button button-primary" type="submit">Confirmar venta</button></div>
-    </form>
-  </dialog>
-  <dialog id="lost-dialog">
-    <form id="lost-form" method="dialog">
-      <div class="dialog-heading"><div><p class="eyebrow">Cierre comercial</p><h2 id="lost-company">Oportunidad perdida</h2></div><button type="button" class="close-button" id="lost-close" aria-label="Cerrar">×</button></div>
-      <input name="client_id" id="lost-client-id" type="hidden">
-      <label>Motivo de la pérdida
-        <select name="reason" required>
-          <option value="Precio">Precio</option>
-          <option value="Competencia">Se fue con la competencia</option>
-          <option value="Sin respuesta">Dejó de responder</option>
-          <option value="Sin presupuesto">Sin presupuesto</option>
-          <option value="Cambió de proyecto">Cambió o canceló el proyecto</option>
-          <option value="Tiempo de entrega">Tiempo de entrega</option>
-          <option value="Otro">Otro</option>
-        </select>
-      </label>
-      <p class="field-help">En Dashboard puedes consultar los motivos de pérdida y su impacto.</p>
-      <div class="dialog-actions"><button type="button" class="button button-quiet" id="lost-cancel">Cancelar</button><button class="button button-primary" type="submit">Marcar como perdido</button></div>
-    </form>
-  </dialog>
-  <dialog id="edit-dialog">
-    <form id="edit-form" method="dialog">
-      <div class="dialog-heading"><div><p class="eyebrow">Ficha del prospecto</p><h2>Editar prospecto</h2></div><button type="button" class="close-button" id="edit-close" aria-label="Cerrar">×</button></div>
-      <input name="client_id" type="hidden">
-      <h3 class="form-section-title">1. Datos de la empresa</h3>
-      <label>Empresa<input name="company" required maxlength="80"></label>
-      <label>Contacto<input name="contact" required maxlength="60"></label>
-      <div class="form-grid"><label>Teléfono del prospecto<input name="contact_phone" type="tel" maxlength="25"></label><label>Correo electrónico<input name="email" type="email" maxlength="120"></label></div>
-      <div class="form-grid"><label>Teléfono de la empresa<input name="company_phone" type="tel" maxlength="25"></label><label>Ubicación de la empresa<input name="company_location" maxlength="180"></label></div>
-      <label>Medio de contacto<select name="preferred_contact"><option value="call">Llamada</option><option value="whatsapp">WhatsApp</option><option value="email">Correo electrónico</option><option value="visit">Visita</option><option value="facebook">Facebook</option><option value="linkedin">LinkedIn</option><option value="tiktok">TikTok</option><option value="instagram">Instagram</option></select></label>
-      <label>Código interno<input name="internal_code" maxlength="40"></label>
-      <h3 class="form-section-title">2. Checklist para cotizar</h3>
-      <label class="inline-checkbox"><input name="use_company_location" type="checkbox"> Usar la ubicación de la empresa como dirección de entrega</label>
-      <label>Dirección de entrega<input name="delivery_address" maxlength="180"></label>
-      <label>Condiciones de entrega<input name="delivery_conditions" maxlength="240"></label>
-      <label>Especificaciones detalladas<textarea name="quote_specifications" maxlength="1000" rows="3"></textarea></label>
-      <div class="form-grid"><label>Flauta<input name="flute" maxlength="40"></label><label>Número de tintas<input name="ink_count" type="number" min="0" step="1"></label></div>
-      <div class="form-grid"><label>Medidas internas<input name="internal_dimensions" maxlength="100"></label><label>Medidas externas<input name="external_dimensions" maxlength="100"></label></div>
-      <div class="form-grid"><label>Tipo de liner<input name="liner_type" maxlength="80"></label><label>Tratamiento Mikelman<select name="mikelman_treatment"><option value="">Sin especificar</option><option value="0">No</option><option value="1">Sí</option></select></label></div>
-      <div class="form-grid"><label>Tarima<input name="pallet" maxlength="80"></label><label>Volumen / cantidad de piezas<input name="estimated_quantity" type="number" min="0" step="1" required></label></div>
-      <div class="form-grid"><label>Periodicidad<input name="periodicity" maxlength="60"></label><label>Forma de pago<input name="payment_terms" maxlength="80"></label></div>
-      <div class="form-grid"><label>Altura máxima de tarima<input name="max_pallet_height" maxlength="40"></label><label>Precio estimado por pieza (MXN)<input name="target_price" type="number" min="0" step="0.01"></label></div>
-      <label>Tipo de caja<input name="box_type" maxlength="100"></label>
-      <div class="form-grid"><label>¿Nos dio muestra física?<select name="sample_provided"><option value="0">No</option><option value="1">Sí</option></select></label><label>¿Nos dio plano?<select name="drawing_provided"><option value="0">No</option><option value="1">Sí</option></select></label></div>
-      <h3 class="form-section-title">3. Pipeline comercial</h3>
-      <div class="form-grid"><label>Planta<input name="plant" maxlength="80"></label><label>Código MP<input name="material_code" maxlength="80"></label></div>
-      <div class="form-grid"><label>OC<input name="purchase_order" maxlength="80"></label><label>Proveedor<input name="supplier" maxlength="100"></label></div>
-      <div class="form-grid"><label>Piezas / Kg<input name="pieces_per_kg" type="number" min="0" step="0.001"></label><label>UM<input name="unit_of_measure" maxlength="30"></label></div>
-      <label>Requerimiento planeado<input name="planned_requirement" maxlength="120"></label>
-      <div class="form-grid"><label>Valor estimado de oportunidad (MXN)<input name="value" type="number" min="0" step="1" required readonly></label><label>Probabilidad (%)<input name="probability" type="number" min="0" max="100" step="1"></label></div>
-      <label>Forecast ponderado (MXN)<input name="weighted_forecast" type="number" readonly></label>
-      <div class="form-grid"><label>Tipo de oportunidad<input name="opportunity_type" maxlength="80"></label><label>Industria / sector del cliente<input name="industry" maxlength="80"></label></div>
-      <label>¿El producto o medida difiere del tipo capturado en Checklist?<select name="product_measure_different" id="edit-product-measure-different"><option value="0">No, usar lo capturado en Checklist</option><option value="1">Sí, agregar un detalle distinto</option></select></label>
-      <div class="form-grid"><label id="edit-product-measure-field" hidden>Detalle de producto / medida (solo si es distinto)<input name="product_measure" maxlength="120"></label><label>Fecha estimada de cierre<input name="estimated_close_date" type="date"></label></div>
-      <label>Próxima acción<input name="next_action" required maxlength="120"></label>
-      <label>Entrega solicitada<input name="requested_delivery_date" type="date"></label>
-      <label>Entrega prevista<input name="expected_delivery_date" type="date"></label>
-      <label>📌 Nota fija (visible en la tarjeta)<textarea name="pinned_note" maxlength="500" rows="2" placeholder="Ej. Solo recibe llamadas por la mañana; pide factura con RFC"></textarea></label>
-      <label id="edit-owner-field" data-admin-only hidden>Vendedor asignado<select name="owner_id" id="edit-owner"></select></label>
-      <div class="dialog-actions"><button type="button" class="button button-quiet" id="edit-cancel">Cancelar</button><button class="button button-primary" type="submit">Guardar cambios</button></div>
-    </form>
-  </dialog>
-  <!-- Cada usuario puede actualizar su propia contraseña desde aquí. -->
-  <dialog id="account-dialog">
-    <form id="password-form" method="dialog">
-      <div class="dialog-heading"><div><p class="eyebrow">Seguridad</p><h2>Cambiar contraseña</h2></div><button type="button" class="close-button" id="close-account" aria-label="Cerrar">×</button></div>
-      <p id="password-message" class="form-error" hidden></p>
-      <label>Contraseña actual<input name="current_password" type="password" required autocomplete="current-password"></label>
-      <label>Nueva contraseña<input name="new_password" type="password" minlength="8" required autocomplete="new-password"><small class="field-help">Usa al menos 8 caracteres.</small></label>
-      <div class="dialog-actions"><button type="button" class="button button-quiet" id="cancel-account">Cancelar</button><button class="button button-primary" type="submit">Actualizar contraseña</button></div>
-    </form>
-  </dialog>
-  </div>
-  <dialog id="prospect-print-dialog" class="prospect-print-dialog" aria-labelledby="prospect-print-title">
-    <div class="prospect-print-content">
-      <div class="prospect-print-toolbar">
-        <div><p class="eyebrow">Exportación completa</p><h2 id="prospect-print-title">Prospectos para imprimir</h2><p class="muted">Usa “Imprimir / Guardar PDF” y selecciona “Guardar como PDF” en el destino de impresión.</p></div>
-        <div class="prospect-print-actions"><button class="button button-primary" id="print-prospects" type="button">Imprimir / Guardar PDF</button><button class="button button-quiet" id="close-prospect-print" type="button">Cerrar</button></div>
-      </div>
-      <div id="prospect-print-report" class="prospect-print-report"></div>
+
+    <!-- DATOS DEL CONTACTO (Nuevos campos indispensables) -->
+    <h4 style="margin-top: 30px; color: #444;">Datos del Contacto Principal</h4>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 20px;">
+        
+        <div>
+            <label for="contacto_nombre" style="font-weight: bold; display: block; margin-bottom: 5px;">Nombre del Contacto *</label>
+            <input type="text" id="contacto_nombre" name="contacto_nombre" placeholder="Ej: Roberto Gómez" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            <small style="color: #777; font-size: 12px; display: block; margin-top: 4px;">Persona con la que darás el seguimiento directo.</small>
+        </div>
+
+        <div>
+            <label for="contacto_puesto" style="font-weight: bold; display: block; margin-bottom: 5px;">Puesto / Cargo</label>
+            <input type="text" id="contacto_puesto" name="contacto_puesto" placeholder="Ej: Gerente de Compras" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            <small style="color: #777; font-size: 12px; display: block; margin-top: 4px;">Ayuda a medir el nivel de decisión de la persona.</small>
+        </div>
+
+        <div>
+            <label for="contacto_email" style="font-weight: bold; display: block; margin-bottom: 5px;">Correo Electrónico *</label>
+            <input type="email" id="contacto_email" name="contacto_email" placeholder="Ej: roberto@techsolutions.com" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            <small style="color: #777; font-size: 12px; display: block; margin-top: 4px;">Email principal para enviar cotizaciones y propuestas.</small>
+        </div>
+
+        <div>
+            <label for="contacto_celular" style="font-weight: bold; display: block; margin-bottom: 5px;">Celular / WhatsApp *</label>
+            <input type="tel" id="contacto_celular" name="contacto_celular" placeholder="Ej: 55 9876 5432" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            <small style="color: #777; font-size: 12px; display: block; margin-top: 4px;">Teléfono directo para llamadas o mensajes rápidos.</small>
+        </div>
     </div>
-  </dialog>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-  <script src="app.js"></script>
-</body>
-</html>
- 
+
+    <!-- ORIGEN DEL PROSPECTO (Nuevo campo indispensable para métricas) -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+        <div>
+            <label for="empresa_origen" style="font-weight: bold; display: block; margin-bottom: 5px;">Origen del Prospecto</label>
+            <select id="empresa_origen" name="empresa_origen" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                <option value="">¿Cómo nos conoció?</option>
+                <option value="recomendacion">Recomendación</option>
+                <option value="redes_sociales">Redes Sociales (Facebook, Instagram, LinkedIn)</option>
+                <option value="google">Búsqueda en Google / Sitio Web</option>
+                <option value="llamada_fria">Prospección Directa (Llamada Fría)</option>
+                <option value="otro">Otro</option>
+            </select>
+            <small style="color: #777; font-size: 12px; display: block; margin-top: 4px;">Clave para identificar qué estrategias de marketing te funcionan mejor.</small>
+        </div>
+    </div>
+
+</div>
+<!-- ========================================== -->
+<!-- FIN SECCIÓN: PROSPECTO / EMPRESA           -->
+<!-- ========================================== -->

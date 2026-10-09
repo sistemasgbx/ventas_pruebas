@@ -241,9 +241,13 @@ dialog textarea { width:100%; margin-top:6px; padding:9px 12px; resize:vertical;
 .prospect-print-report { min-height:0; overflow:auto; padding:24px; background:#f5f7f4; }
 .prospect-print-cover { display:flex; align-items:center; gap:24px; margin-bottom:20px; padding:22px; background:#fff; border:1px solid var(--line); }
 .prospect-print-cover img { width:180px; max-height:90px; object-fit:contain; }
+.prospect-print-cover > div { min-width:0; }
 .prospect-print-cover h1 { margin:0; color:var(--ink); font:700 clamp(23px,4vw,32px)/1.15 'Playfair Display',serif; }
 .prospect-print-cover p:not(.eyebrow) { margin:7px 0 0; color:var(--muted); font-size:12px; }
 .prospect-print-cover .eyebrow { margin-bottom:4px; }
+.prospect-print-measure-example { max-width:420px; margin:14px 0 0; }
+.prospect-print-measure-example figcaption { margin-bottom:5px; color:var(--muted); font-size:10px; font-weight:700; }
+.prospect-print-measure-example img { display:block; width:100%; max-width:420px; max-height:none; height:auto; border:1px solid #cfe8d4; }
 .prospect-print-scope { font-weight:700; }
 .prospect-print-client { margin:0 0 18px; padding:20px; background:#fff; border:1px solid var(--line); }
 .prospect-print-client-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding-bottom:12px; border-bottom:2px solid var(--ink); }
@@ -265,6 +269,8 @@ dialog textarea { width:100%; margin-top:6px; padding:9px 12px; resize:vertical;
   .prospect-print-report { padding:12px; }
   .prospect-print-cover { align-items:flex-start; flex-direction:column; gap:12px; padding:16px; }
   .prospect-print-cover img { width:140px; max-height:70px; }
+  .prospect-print-measure-example img { width:100%; }
+  .prospect-print-measure-example { width:100%; }
   .prospect-print-client { padding:14px; }
   .prospect-print-client-heading h2 { font-size:19px; }
   .prospect-print-section dl { grid-template-columns:minmax(0,1fr); }
@@ -279,6 +285,7 @@ dialog textarea { width:100%; margin-top:6px; padding:9px 12px; resize:vertical;
   .prospect-print-report { overflow:visible; padding:0; background:#fff; }
   .prospect-print-cover { min-height:230mm; margin:0; padding:18mm; border:0; break-after:page; page-break-after:always; }
   .prospect-print-cover img { width:180px; }
+  .prospect-print-measure-example img { width:100%; max-width:420px; }
   .prospect-print-client { margin:0; padding:0; border:0; break-before:page; page-break-before:always; }
   .prospect-print-client-first { break-before:auto; page-break-before:auto; }
   .prospect-print-client-heading { break-after:avoid; page-break-after:avoid; }
