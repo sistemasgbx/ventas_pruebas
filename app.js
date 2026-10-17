@@ -908,7 +908,8 @@ function showClientFormStep(step) {
   document.querySelectorAll('.wizard-progress span').forEach((label, index) => label.classList.toggle('wizard-step-active', index === step));
   document.querySelector('#client-step-back').hidden = step === 0;
   document.querySelector('#client-step-next').hidden = step === clientFormSteps.length - 1;
-  document.querySelector('#client-submit').hidden = step !== clientFormSteps.length - 1;
+  // BLOQUEO TEMPORAL: Checklist (paso 2) y Pipeline (paso 3) en mejora.
+  document.querySelector('#client-submit').hidden = true;
   document.querySelector('#client-save-progress').hidden = step === clientFormSteps.length - 1;
 }
 function syncCompanyDeliveryAddress(form, useCompanyLocation) {
@@ -934,6 +935,11 @@ document.querySelector('#client-step-next').addEventListener('click', () => {
     ? control.checked
     : !control.readOnly && String(control.value || '').trim() !== '');
   if (!hasData) return alert('Captura al menos un dato de este módulo antes de continuar.');
+  // BLOQUEO TEMPORAL: no se permite avanzar al Checklist ni al Pipeline.
+  if (clientFormStep === 0) {
+    alert('El Checklist y el Pipeline comercial están en mejora. Por ahora solo puedes guardar los datos de la empresa.');
+    return;
+  }
   saveClientProgress(false, true);
 });
 document.querySelector('#client-step-back').addEventListener('click', () => showClientFormStep(clientFormStep - 1));
@@ -990,6 +996,10 @@ function clientFormPayload(complete, advance = false) {
   };
 }
 async function saveClientProgress(complete, advance = false) {
+  // BLOQUEO TEMPORAL: Checklist (paso 2) y Pipeline (paso 3) en mejora.
+  if (clientFormStep !== 0) {
+    return alert('El Checklist y el Pipeline comercial están en mejora. Por ahora solo puedes guardar los datos de la empresa.');
+  }
   const payload = clientFormPayload(complete, advance);
   if (!complete && ['won', 'lost'].includes(payload.stage)) {
     return alert('Para cerrar como Ganado o Perdido, termina primero la captura de la oportunidad.');
@@ -1346,7 +1356,8 @@ function openClientDraft(id) {
   updateWeightedForecast();
   document.querySelector('#client-dialog h2').textContent = 'Continuar captura';
   document.querySelector('#client-dialog .eyebrow').textContent = 'Oportunidad en borrador';
-  showClientFormStep(Math.min(2, Math.max(0, Number(client.capture_step || 1) - 1)));
+  // BLOQUEO TEMPORAL: siempre abrir en el paso 1 mientras Checklist/Pipeline estén en mejora.
+  showClientFormStep(0);
   document.querySelector('#client-dialog').showModal();
 }
 document.querySelector('#edit-form').addEventListener('submit', async event => {
