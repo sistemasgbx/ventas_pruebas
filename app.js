@@ -6,8 +6,6 @@ const stages = [
   { id: 'lost', label: 'Perdido' }
 ];
 
-// Estos datos representan las etapas del negocio y se reutilizan en el pipeline,
-// los filtros, los formularios y el panel administrativo.
 let clients = [];
 let linkedClients = [];
 let appointments = [];
@@ -39,7 +37,6 @@ const ownerFilter = document.querySelector('#owner-filter');
 const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 });
 
 async function api(path, options = {}) {
-  // Centralizar fetch evita repetir la misma lectura de errores en cada botón.
   const response = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...options });
   const responseText = await response.text();
   let payload = {};
@@ -57,7 +54,6 @@ async function api(path, options = {}) {
   return payload;
 }
 
-// ---------- Seguimiento: helpers ----------
 const STALE_DAYS = 7;
 
 function todayIso() { return new Date().toLocaleDateString('en-CA'); }
@@ -74,14 +70,12 @@ function followUpStatus(client) {
   return diff <= 3 ? 'soon' : 'later';
 }
 function daysSinceMovement(client) {
-  // Cuenta desde el último contacto real; reprogramar una fecha no reinicia el contador.
   const last = client.last_contact_at || client.created_at;
   if (!last) return null;
   return daysBetween(String(last).slice(0, 10), todayIso());
 }
 function isStale(client) { return isOpen(client) && (daysSinceMovement(client) ?? 0) >= STALE_DAYS; }
 
-// ---------- Contacto rápido ----------
 function digits(value) { return String(value || '').replace(/\D/g, ''); }
 function contactActions(client) {
   const phoneDigits = digits(client.contact_phone || client.company_phone);
@@ -98,7 +92,6 @@ function contactActions(client) {
   return links.join('');
 }
 
-// ---------- Avisos ----------
 function showToast(message, onClick) {
   let box = document.querySelector('#toast-box');
   if (!box) { box = document.createElement('div'); box.id = 'toast-box'; box.setAttribute('aria-live', 'polite'); document.body.append(box); }
@@ -113,7 +106,6 @@ function showToast(message, onClick) {
 
 const remindedKeys = new Set();
 function checkReminders() {
-  // Recordatorio 10 minutos antes de la hora de contacto (solo vendedores, con la app abierta).
   if (currentUser?.role !== 'seller') return;
   api('/api/reminders').then(({ reminders }) => reminders.forEach(client => {
     const key = `${client.id}-${client.call_date}-${client.call_time}`;
@@ -142,7 +134,6 @@ function refreshFollowUpUI() {
   if (activeView === 'today') showToday().catch(error => alert(error.message));
 }
 
-// ---------- Carga y filtrado ----------
 function refreshOwnerFilter(owners = []) {
   if (currentUser?.role !== 'admin') return;
   const current = ownerFilter.value;
@@ -197,7 +188,6 @@ async function loadAllClientsForCurrentView() {
   clients = items;
   clientsTotal = first.total;
   clientSummary = first.summary;
-  clientSummary = first.summary;
   clientFollowUpCounts = first.followup_counts;
   refreshOwnerFilter(first.owners);
   refreshFollowUpUI();
@@ -240,7 +230,6 @@ function render() {
 }
 
 function renderCard(client) {
-  // Los datos que vienen del servidor pasan por escapeHtml antes de entrar al HTML.
   const call = client.call_date || client.call_time ? `Llamada: ${formatScheduledCall(client.call_date, client.call_time)}` : 'Sin llamada programada';
   const movement = client.last_to_stage ? `${client.last_from_stage ? `${stageLabel(client.last_from_stage)} → ` : ''}${stageLabel(client.last_to_stage)}` : 'Sin movimientos registrados';
   const contactData = [client.contact_phone, client.email, client.company_phone].filter(Boolean).map(escapeHtml).join(' · ');
@@ -251,6 +240,7 @@ function renderCard(client) {
     client.company_location ? `Ubicación: ${client.company_location}` : '',
     client.sample_provided === null || client.sample_provided === undefined ? '' : `Muestra: ${Number(client.sample_provided) ? 'Recibida' : 'No recibida'}`,
     client.drawing_provided === null || client.drawing_provided === undefined ? '' : `Plano: ${Number(client.drawing_provided) ? 'Recibido' : 'No recibido'}`,
+    client.stapled === null || client.stapled === undefined ? '' : `Engrapado: ${Number(client.stapled) ? 'Sí' : 'No'}`,
     client.requested_delivery_date ? `Entrega solicitada: ${formatCalendarDate(client.requested_delivery_date)}` : '',
     client.expected_delivery_date ? `Entrega prevista: ${formatCalendarDate(client.expected_delivery_date)}` : ''
   ].filter(Boolean).map(escapeHtml).join(' · ');
@@ -310,35 +300,40 @@ function renderCaptureSummary(client) {
   const contactLabels = { call: 'Llamada', whatsapp: 'WhatsApp', email: 'Correo electrónico', visit: 'Visita', facebook: 'Facebook', linkedin: 'LinkedIn', tiktok: 'TikTok', instagram: 'Instagram' };
   const modules = [
     {
-      title: '1. Datos de la empresa',
+      title: '1. Prospecto',
       complete: completed || captureStep >= 2,
       fields: [
         ['Empresa', 'company'], ['Contacto', 'contact'], ['Medio de contacto', 'preferred_contact', value => contactLabels[value] || value],
         ['Teléfono de contacto', 'contact_phone'], ['Correo', 'email'],
-        ['Teléfono de empresa', 'company_phone'], ['Ubicación de empresa', 'company_location']
+        ['Teléfono de empresa', 'company_phone'], ['Ubicación de empresa', 'company_location'],
+        ['Código interno', 'internal_code']
       ]
     },
     {
-      title: '2. Checklist para cotizar',
+      title: '2. Checklist',
       complete: completed || captureStep >= 3,
       fields: [
         ['Dirección de entrega', 'delivery_address'], ['Condiciones de entrega', 'delivery_conditions'],
         ['Especificaciones', 'quote_specifications'], ['Flauta', 'flute'], ['Número de tintas', 'ink_count'],
-        ['Medidas internas', 'internal_dimensions'], ['Medidas externas', 'external_dimensions'],
+        ['Medidas internas (L x A x Al)', 'internal_dimensions'], ['Medidas externas (L x A x Al)', 'external_dimensions'],
         ['Muestra física', 'sample_provided', value => Number(value) ? 'Sí' : 'No'],
-        ['Tipo de liner', 'liner_type'], ['Tratamiento Mikelman', 'mikelman_treatment', value => Number(value) ? 'Sí' : 'No'],
-        ['Tarima', 'pallet'], ['Volumen / piezas', 'estimated_quantity', value => Number(value).toLocaleString('es-MX')],
-        ['Periodicidad', 'periodicity'], ['Forma de pago', 'payment_terms'],
-        ['Altura máxima de tarima', 'max_pallet_height'],
-        ['Precio estimado por pieza', 'target_price', value => money.format(value)],
+        ['Lainer', 'liner_type'], ['Tratamiento Mikelman', 'mikelman_treatment', value => Number(value) ? 'Sí' : 'No'],
+        ['Engrapado', 'stapled', value => Number(value) ? 'Sí' : 'No'],
+        ['Plano', 'drawing_provided', value => Number(value) ? 'Sí' : 'No'],
         ['Tipo de caja / producto', 'box_type'],
-        ['Plano', 'drawing_provided', value => Number(value) ? 'Sí' : 'No']
+        ['Playo', 'playo'], ['Fleje', 'fleje'],
+        ['Pieza por paquete', 'pieces_per_package', value => Number(value).toLocaleString('es-MX')],
+        ['Observaciones de embalaje', 'packaging_notes']
       ]
     },
     {
-      title: '3. Pipeline comercial',
+      title: '3. Embalaje',
       complete: completed,
       fields: [
+        ['Tarima', 'pallet'], ['Altura máxima de tarima', 'max_pallet_height'],
+        ['Volumen / piezas', 'estimated_quantity', value => Number(value).toLocaleString('es-MX')],
+        ['Periodicidad', 'periodicity'], ['Forma de pago', 'payment_terms'],
+        ['Precio estimado por pieza', 'target_price', value => money.format(value)],
         ['Etapa', 'stage', value => stageLabel(value)], ['Tipo de oportunidad', 'opportunity_type'],
         ['Industria / sector', 'industry'], ['Producto / medida', 'product_measure'],
         ['Valor estimado', 'value', value => money.format(value)],
@@ -347,7 +342,10 @@ function renderCaptureSummary(client) {
         ['Fecha estimada de cierre', 'estimated_close_date'], ['Siguiente acción', 'next_action'],
         ['Fecha de seguimiento', 'call_date'], ['Hora de seguimiento', 'call_time'],
         ['Observaciones', 'pinned_note'], ['Importe real vendido', 'won_value', value => money.format(value)],
-        ['Motivo de pérdida', 'lost_reason']
+        ['Motivo de pérdida', 'lost_reason'],
+        ['Planta', 'plant'], ['Código MP', 'material_code'], ['OC', 'purchase_order'],
+        ['Piezas / Kg', 'pieces_per_kg'], ['UM', 'unit_of_measure'], ['Proveedor', 'supplier'],
+        ['Requerimiento planeado', 'planned_requirement']
       ]
     }
   ];
@@ -355,7 +353,7 @@ function renderCaptureSummary(client) {
     const rows = module.fields
       .filter(([, key]) => client[key] !== null && client[key] !== undefined
         && String(client[key]).trim() !== ''
-        && !(['estimated_quantity', 'probability', 'weighted_forecast', 'value'].includes(key) && Number(client[key]) === 0))
+        && !(['estimated_quantity', 'probability', 'weighted_forecast', 'value', 'pieces_per_package'].includes(key) && Number(client[key]) === 0))
       .map(([label, key, format]) => `<tr><th scope="row">${escapeHtml(label)}</th><td>${escapeHtml(format ? format(client[key]) : client[key])}</td></tr>`)
       .join('');
     const status = module.complete ? 'Capturado' : 'Pendiente';
@@ -620,7 +618,6 @@ async function showKpis(week = currentIsoWeek()) {
   document.querySelector('#kpi-week').addEventListener('change', event => showKpis(event.target.value).catch(error => alert(error.message)));
 }
 
-// ---------- Vista "Seguimiento" (Mi día) ----------
 async function snoozeFollowUp(id, days) {
   const client = clients.find(item => String(item.id) === String(id));
   if (!client) return;
@@ -709,7 +706,6 @@ document.querySelector('#today-page').addEventListener('click', async event => {
   } catch (error) { alert(error.message); }
 });
 
-// ---------- Exportar CSV ----------
 async function exportCsv() {
   const cols = [
     ['created_at', 'Fecha'], ['owner_name', 'Vendedor'], ['company', 'Empresa'], ['contact', 'Contacto'],
@@ -723,10 +719,13 @@ async function exportCsv() {
     ['delivery_address', 'Dirección de entrega'], ['delivery_conditions', 'Condiciones de entrega'],
     ['quote_specifications', 'Especificaciones a cotizar'], ['flute', 'Flauta'], ['ink_count', 'Número de tintas'],
     ['internal_dimensions', 'Medidas internas'], ['external_dimensions', 'Medidas externas'],
-    ['sample_provided', 'Muestra física'], ['liner_type', 'Tipo de liner'],
-    ['mikelman_treatment', 'Tratamiento Mikelman'], ['pallet', 'Tarima'],
+    ['sample_provided', 'Muestra física'], ['stapled', 'Engrapado'], ['liner_type', 'Liner'],
+    ['mikelman_treatment', 'Tratamiento Mikelman'],
+    ['playo', 'Playo'], ['fleje', 'Fleje'], ['pieces_per_package', 'Pieza por paquete'],
+    ['packaging_notes', 'Observaciones de embalaje'],
+    ['pallet', 'Tarima'], ['max_pallet_height', 'Altura máxima de tarima'],
     ['estimated_quantity', 'Volumen / cantidad de piezas'], ['periodicity', 'Periodicidad'],
-    ['payment_terms', 'Forma de pago'], ['max_pallet_height', 'Altura máxima de tarima'],
+    ['payment_terms', 'Forma de pago'],
     ['target_price', 'Precio estimado por pieza'], ['plant', 'Planta'], ['material_code', 'Código MP'],
     ['purchase_order', 'OC'], ['pieces_per_kg', 'Piezas / Kg'], ['unit_of_measure', 'UM'],
     ['planned_requirement', 'Requerimiento planeado'], ['supplier', 'Proveedor'],
@@ -734,11 +733,11 @@ async function exportCsv() {
   ];
   const cell = value => {
     let text = String(value ?? '');
-    if (/^[=+\-@]/.test(text)) text = `'${text}`; // evita fórmulas en Excel
+    if (/^[=+\-@]/.test(text)) text = `'${text}`;
     return `"${text.replace(/"/g, '""')}"`;
   };
   const { items } = await fetchClientPages(true);
-  const rows = items.map(c => cols.map(([key]) => cell(key === 'stage' ? stageLabel(c.stage) : key === 'status' ? (c.stage === 'won' ? 'Ganada' : c.stage === 'lost' ? 'Perdida' : 'Activa') : key === 'sample_provided' ? (c.sample_provided == null ? '' : Number(c.sample_provided) ? 'Sí' : 'No') : c[key])).join(','));
+  const rows = items.map(c => cols.map(([key]) => cell(key === 'stage' ? stageLabel(c.stage) : key === 'status' ? (c.stage === 'won' ? 'Ganada' : c.stage === 'lost' ? 'Perdida' : 'Activa') : key === 'sample_provided' ? (c.sample_provided == null ? '' : Number(c.sample_provided) ? 'Sí' : 'No') : key === 'stapled' ? (c.stapled == null ? '' : Number(c.stapled) ? 'Sí' : 'No') : c[key])).join(','));
   const csv = '\ufeff' + [cols.map(([, label]) => cell(label)).join(','), ...rows].join('\r\n');
   const link = document.createElement('a');
   link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
@@ -747,10 +746,9 @@ async function exportCsv() {
   URL.revokeObjectURL(link.href);
 }
 
-// ---------- Imprimir o guardar todos los prospectos como PDF ----------
 const prospectPrintFields = [
   {
-    title: '1. Datos de la empresa y contacto',
+    title: '1. Prospecto',
     fields: [
       ['Empresa', 'company'], ['Persona de contacto', 'contact'], ['Medio de contacto', 'preferred_contact'],
       ['Teléfono de contacto', 'contact_phone'], ['Correo de contacto', 'email'],
@@ -759,23 +757,33 @@ const prospectPrintFields = [
     ]
   },
   {
-    title: '2. Checklist para cotizar',
+    title: '2. Checklist',
     fields: [
       ['Dirección de entrega', 'delivery_address'], ['Condiciones de entrega', 'delivery_conditions'],
       ['Especificaciones a cotizar', 'quote_specifications'], ['Flauta', 'flute'],
       ['Número de tintas', 'ink_count'], ['Medidas internas', 'internal_dimensions'],
       ['Medidas externas', 'external_dimensions'], ['Muestra física', 'sample_provided'],
-      ['Tipo de liner', 'liner_type'], ['Tratamiento Mikelman', 'mikelman_treatment'],
-      ['Tarima', 'pallet'], ['Volumen / cantidad de piezas', 'estimated_quantity'],
-      ['Periodicidad', 'periodicity'], ['Forma de pago', 'payment_terms'],
-      ['Altura máxima de tarima', 'max_pallet_height'], ['Precio estimado por pieza', 'target_price'],
-      ['Tipo de caja / producto', 'box_type'], ['Plano recibido', 'drawing_provided'],
-      ['Fecha de entrega solicitada', 'requested_delivery_date'],
-      ['Fecha de entrega prevista', 'expected_delivery_date']
+      ['Engrapado', 'stapled'], ['Lainer', 'liner_type'], ['Tratamiento Mikelman', 'mikelman_treatment'],
+      ['Plano recibido', 'drawing_provided'], ['Tipo de caja / producto', 'box_type'],
+      ['Playo', 'playo'], ['Fleje', 'fleje'], ['Pieza por paquete', 'pieces_per_package'],
+      ['Observaciones de embalaje', 'packaging_notes']
     ]
   },
   {
-    title: '3. Pipeline comercial',
+    title: '3. Embalaje',
+    fields: [
+      ['Tarima', 'pallet'], ['Altura máxima de tarima', 'max_pallet_height'],
+      ['Volumen / cantidad de piezas', 'estimated_quantity'], ['Periodicidad', 'periodicity'],
+      ['Forma de pago', 'payment_terms'], ['Precio estimado por pieza', 'target_price'],
+      ['Fecha de entrega solicitada', 'requested_delivery_date'],
+      ['Fecha de entrega prevista', 'expected_delivery_date'],
+      ['Planta', 'plant'], ['Código MP', 'material_code'], ['Orden de compra', 'purchase_order'],
+      ['Piezas / Kg', 'pieces_per_kg'], ['Unidad de medida', 'unit_of_measure'],
+      ['Requerimiento planeado', 'planned_requirement'], ['Proveedor', 'supplier']
+    ]
+  },
+  {
+    title: 'Pipeline comercial',
     fields: [
       ['Etapa comercial', 'stage'], ['Tipo de oportunidad', 'opportunity_type'],
       ['Industria / sector', 'industry'], ['Producto / medida', 'product_measure'],
@@ -783,15 +791,7 @@ const prospectPrintFields = [
       ['Forecast ponderado', 'weighted_forecast'], ['Fecha estimada de cierre', 'estimated_close_date'],
       ['Motivo / siguiente acción', 'next_action'], ['Próxima fecha de seguimiento', 'call_date'],
       ['Hora de seguimiento', 'call_time'], ['Observaciones', 'pinned_note'],
-      ['Importe real vendido', 'won_value'], ['Motivo de pérdida', 'lost_reason']
-    ]
-  },
-  {
-    title: 'Datos operativos y estado de captura',
-    fields: [
-      ['Planta', 'plant'], ['Código MP', 'material_code'], ['Orden de compra', 'purchase_order'],
-      ['Piezas / Kg', 'pieces_per_kg'], ['Unidad de medida', 'unit_of_measure'],
-      ['Requerimiento planeado', 'planned_requirement'], ['Proveedor', 'supplier'],
+      ['Importe real vendido', 'won_value'], ['Motivo de pérdida', 'lost_reason'],
       ['Captura', 'capture_status'], ['Vendedor asignado', 'owner_name'],
       ['Fecha de registro', 'created_at']
     ]
@@ -811,7 +811,7 @@ const prospectContactLabels = {
   call: 'Llamada', whatsapp: 'WhatsApp', email: 'Correo electrónico', visit: 'Visita',
   facebook: 'Facebook', linkedin: 'LinkedIn', tiktok: 'TikTok', instagram: 'Instagram'
 };
-const prospectBooleanFields = new Set(['sample_provided', 'drawing_provided', 'mikelman_treatment']);
+const prospectBooleanFields = new Set(['sample_provided', 'drawing_provided', 'mikelman_treatment', 'stapled']);
 const prospectMoneyFields = new Set(['target_price', 'value', 'weighted_forecast', 'won_value']);
 const prospectDateFields = new Set([
   'requested_delivery_date', 'expected_delivery_date', 'estimated_close_date', 'call_date',
@@ -830,7 +830,7 @@ function prospectPrintValue(client, key) {
   if (prospectBooleanFields.has(key)) return Number(value) ? 'Sí' : 'No';
   if (prospectMoneyFields.has(key)) return money.format(Number(value));
   if (key === 'probability') return `${Number(value)}%`;
-  if (key === 'estimated_quantity' || key === 'pieces_per_kg') return Number(value).toLocaleString('es-MX');
+  if (key === 'estimated_quantity' || key === 'pieces_per_kg' || key === 'pieces_per_package') return Number(value).toLocaleString('es-MX');
   if (prospectDateFields.has(key)) return formatCalendarDate(value);
   if (key === 'created_at' || key === 'last_movement_at' || key === 'last_contact_at') {
     return formatMovementTimestamp(value);
@@ -861,7 +861,6 @@ async function showProspectPrintPreview(button) {
   button.disabled = true;
   button.textContent = 'Preparando prospectos…';
   try {
-    // El servidor aplica el alcance por usuario; se omiten únicamente filtros y paginación de pantalla.
     const { first, items } = await fetchClientPages(false);
     if (!items.length) {
       alert('No hay prospectos para incluir en el reporte.');
@@ -896,10 +895,37 @@ document.querySelector('#prospect-print-dialog').addEventListener('close', () =>
   document.querySelector('#prospect-print-report').replaceChildren();
 });
 
-// Alta de prospectos: el navegador organiza la captura; el servidor valida y guarda.
+const importForm = document.querySelector('#import-form');
+document.querySelector('#import-excel').addEventListener('click', () => {
+  document.querySelector('#import-result').textContent = '';
+  importForm.reset();
+  document.querySelector('#import-dialog').showModal();
+});
+document.querySelector('#import-close').addEventListener('click', () => document.querySelector('#import-dialog').close());
+document.querySelector('#import-cancel').addEventListener('click', () => document.querySelector('#import-dialog').close());
+importForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  const file = document.querySelector('#import-file').files[0];
+  if (!file) return;
+  const formData = new FormData();
+  formData.append('file', file);
+  const resultBox = document.querySelector('#import-result');
+  resultBox.textContent = 'Subiendo y procesando archivo…';
+  try {
+    const response = await fetch('/api/clients/import', { method: 'POST', body: formData });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || 'No se pudo importar');
+    resultBox.innerHTML = `<strong>Importación terminada.</strong><br>Creados: ${payload.created}<br>Omitidos (duplicados): ${payload.skipped}<br>Con errores: ${payload.errors.length}` +
+      (payload.errors.length ? `<br><br><strong>Detalle de errores:</strong><ul>${payload.errors.slice(0, 20).map(error => `<li>Fila ${error.row}: ${escapeHtml(error.message)}</li>`).join('')}</ul>` : '');
+    await loadClients();
+  } catch (error) {
+    resultBox.textContent = `Error: ${error.message}`;
+  }
+});
+
 const clientForm = document.querySelector('#client-form');
 const clientFormSteps = [...clientForm.querySelectorAll('[data-form-step]')];
-const clientStepLabels = ['Datos de la empresa', 'Checklist para cotizar', 'Pipeline comercial'];
+const clientStepLabels = ['Prospecto', 'Checklist', 'Embalaje'];
 let clientFormStep = 0;
 function showClientFormStep(step) {
   clientFormStep = step;
@@ -908,8 +934,7 @@ function showClientFormStep(step) {
   document.querySelectorAll('.wizard-progress span').forEach((label, index) => label.classList.toggle('wizard-step-active', index === step));
   document.querySelector('#client-step-back').hidden = step === 0;
   document.querySelector('#client-step-next').hidden = step === clientFormSteps.length - 1;
-  // BLOQUEO TEMPORAL: Checklist (paso 2) y Pipeline (paso 3) en mejora.
-  document.querySelector('#client-submit').hidden = true;
+  document.querySelector('#client-submit').hidden = step !== clientFormSteps.length - 1;
   document.querySelector('#client-save-progress').hidden = step === clientFormSteps.length - 1;
 }
 function syncCompanyDeliveryAddress(form, useCompanyLocation) {
@@ -935,11 +960,6 @@ document.querySelector('#client-step-next').addEventListener('click', () => {
     ? control.checked
     : !control.readOnly && String(control.value || '').trim() !== '');
   if (!hasData) return alert('Captura al menos un dato de este módulo antes de continuar.');
-  // BLOQUEO TEMPORAL: no se permite avanzar al Checklist ni al Pipeline.
-  if (clientFormStep === 0) {
-    alert('El Checklist y el Pipeline comercial están en mejora. Por ahora solo puedes guardar los datos de la empresa.');
-    return;
-  }
   saveClientProgress(false, true);
 });
 document.querySelector('#client-step-back').addEventListener('click', () => showClientFormStep(clientFormStep - 1));
@@ -983,23 +1003,24 @@ function clientFormPayload(complete, advance = false) {
     box_type: form.get('boxType'), next_action: form.get('nextAction'),
     call_date: form.get('callDate'), call_time: form.get('callTime'),
     sample_provided: optionalNumber('sampleProvided'), drawing_provided: optionalNumber('drawingProvided'),
+    stapled: optionalNumber('stapled'),
     delivery_address: useCompanyLocation.checked ? form.get('companyLocation') : form.get('deliveryAddress'), delivery_conditions: form.get('deliveryConditions'),
     quote_specifications: form.get('quoteSpecifications'), flute: form.get('flute'),
     ink_count: optionalNumber('inkCount'), internal_dimensions: form.get('internalDimensions'),
     external_dimensions: form.get('externalDimensions'), liner_type: form.get('linerType'),
     mikelman_treatment: form.get('mikelmanTreatment'), pallet: form.get('pallet'),
+    playo: form.get('playo'), fleje: form.get('fleje'),
+    pieces_per_package: optionalNumber('piecesPerPackage'),
+    packaging_notes: form.get('packagingNotes'),
     periodicity: form.get('periodicity'), payment_terms: form.get('paymentTerms'),
     max_pallet_height: form.get('maxPalletHeight'), target_price: optionalNumber('targetPrice'),
     opportunity_type: form.get('opportunityType'), industry: form.get('industry'),
     product_measure: productMeasureDifferent.value === '1' ? form.get('productMeasure') : form.get('boxType'), probability: Number(form.get('probability') || 0),
-    estimated_close_date: form.get('estimatedCloseDate'), pinned_note: form.get('pinnedNote')
+    estimated_close_date: form.get('estimatedCloseDate'), pinned_note: form.get('pinnedNote'),
+    internal_code: form.get('internalCode')
   };
 }
 async function saveClientProgress(complete, advance = false) {
-  // BLOQUEO TEMPORAL: Checklist (paso 2) y Pipeline (paso 3) en mejora.
-  if (clientFormStep !== 0) {
-    return alert('El Checklist y el Pipeline comercial están en mejora. Por ahora solo puedes guardar los datos de la empresa.');
-  }
   const payload = clientFormPayload(complete, advance);
   if (!complete && ['won', 'lost'].includes(payload.stage)) {
     return alert('Para cerrar como Ganado o Perdido, termina primero la captura de la oportunidad.');
@@ -1157,7 +1178,6 @@ document.querySelector('#activity-type').addEventListener('change', event => {
   document.querySelector('#quote-amount').required = isQuote;
 });
 
-// Búsqueda con pequeña espera para no redibujar en cada tecla.
 let searchTimer;
 search.addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => loadClients({ resetPage: true }).catch(error => alert(error.message)), 250); });
 [stageFilter, followFilter, sortFilter, ownerFilter].forEach(control => control.addEventListener('change', () => loadClients({ resetPage: true }).catch(error => alert(error.message))));
@@ -1175,14 +1195,12 @@ function setClientLayout(layout) {
 }
 document.querySelector('#export-csv').addEventListener('click', () => exportCsv().catch(error => alert(error.message)));
 
-// Atajos: "/" busca, "n" crea prospecto
 document.addEventListener('keydown', event => {
   if (event.target.matches('input, textarea, select') || document.querySelector('dialog[open]')) return;
   if (event.key === '/') { event.preventDefault(); showView('clients').then(() => search.focus()); }
   if (event.key === 'n') { event.preventDefault(); showView('clients').then(() => document.querySelector('#new-client').click()); }
 });
 
-// ---------- Diálogo de seguimiento ----------
 document.querySelector('#follow-up-close').addEventListener('click', () => document.querySelector('#follow-up-dialog').close());
 document.querySelector('#follow-up-cancel').addEventListener('click', () => document.querySelector('#follow-up-dialog').close());
 document.querySelector('#follow-up-form').addEventListener('submit', async event => { event.preventDefault(); const form = new FormData(event.target); try { await api(`/api/clients/${form.get('client_id')}`, { method: 'PATCH', body: JSON.stringify({ call_date: form.get('call_date'), call_time: form.get('call_time'), note: form.get('note'), activity_type: form.get('activity_type'), outcome: form.get('outcome'), next_action: form.get('next_action') }) }); event.target.closest('dialog').close(); await loadClients(); } catch (error) { alert(error.message); } });
@@ -1196,7 +1214,6 @@ document.querySelector('#next-action-chips').addEventListener('click', event => 
   const chip = event.target.closest('[data-action-text]');
   if (chip) document.querySelector('#follow-up-next-action').value = chip.dataset.actionText;
 });
-// Sugerencia de próxima fecha según el resultado (el vendedor puede cambiarla)
 const outcomeSuggestedDays = { no_answer: 1, quote_requested: 1, quote_sent: 3, awaiting_customer: 5, sample_requested: 7 };
 document.querySelector('#follow-up-outcome').addEventListener('change', event => {
   const days = outcomeSuggestedDays[event.target.value];
@@ -1208,7 +1225,6 @@ pipeline.addEventListener('click', event => { const button = event.target.closes
 async function deleteClient(id, company) { if (!window.confirm(`¿Eliminar el prospecto "${company}"? Se borrará su historial de movimientos y no se podrá recuperar.`)) return; try { await api(`/api/clients/${id}`, { method: 'DELETE' }); await loadClients(); } catch (error) { alert(error.message); } }
 document.querySelector('#today').textContent = new Intl.DateTimeFormat('es-MX', { dateStyle: 'long' }).format(new Date());
 
-// ---------- Arrastrar y soltar entre etapas ----------
 pipeline.addEventListener('dragstart', event => {
   const card = event.target.closest('.client-card');
   if (!card || Number(clients.find(item => String(item.id) === card.dataset.id)?.capture_complete) === 0) {
@@ -1239,11 +1255,9 @@ pipeline.addEventListener('drop', event => {
   stage.classList.remove('drop-target');
   const id = event.dataTransfer.getData('text/plain');
   const client = clients.find(item => String(item.id) === id);
-  // Reutiliza moveClient: "Ganado" pide el importe real y "Perdido" el motivo.
   if (client && client.stage !== stage.dataset.stage) moveClient(id, stage.dataset.stage);
 });
 
-// ---------- Motivo de pérdida ----------
 document.querySelector('#lost-form').addEventListener('submit', async event => {
   event.preventDefault();
   const form = new FormData(event.target);
@@ -1255,16 +1269,14 @@ document.querySelector('#lost-form').addEventListener('submit', async event => {
 });
 document.querySelector('#lost-close').addEventListener('click', () => document.querySelector('#lost-dialog').close());
 document.querySelector('#lost-cancel').addEventListener('click', () => document.querySelector('#lost-dialog').close());
-// Si se cierra sin confirmar (Esc, cancelar), se restaura la etapa real en pantalla.
 ['#sale-dialog', '#lost-dialog'].forEach(selector => document.querySelector(selector).addEventListener('close', () => loadClients().catch(() => {})));
 
-// ---------- Editar prospecto ----------
 async function openEditDialog(id) {
   const client = clients.find(item => String(item.id) === String(id));
   if (!client) return;
   const form = document.querySelector('#edit-form');
   form.elements.client_id.value = client.id;
-  ['company', 'contact', 'contact_phone', 'email', 'company_phone', 'company_location', 'internal_code', 'value', 'weighted_forecast', 'estimated_quantity', 'box_type', 'preferred_contact', 'requested_delivery_date', 'expected_delivery_date', 'pinned_note', 'plant', 'material_code', 'purchase_order', 'pieces_per_kg', 'unit_of_measure', 'planned_requirement', 'supplier', 'delivery_address', 'delivery_conditions', 'quote_specifications', 'flute', 'ink_count', 'internal_dimensions', 'external_dimensions', 'liner_type', 'mikelman_treatment', 'pallet', 'periodicity', 'payment_terms', 'max_pallet_height', 'target_price', 'probability', 'opportunity_type', 'industry', 'product_measure', 'estimated_close_date', 'next_action']
+  ['company', 'contact', 'contact_phone', 'email', 'company_phone', 'company_location', 'internal_code', 'value', 'weighted_forecast', 'estimated_quantity', 'box_type', 'preferred_contact', 'requested_delivery_date', 'expected_delivery_date', 'pinned_note', 'plant', 'material_code', 'purchase_order', 'pieces_per_kg', 'unit_of_measure', 'planned_requirement', 'supplier', 'delivery_address', 'delivery_conditions', 'quote_specifications', 'flute', 'ink_count', 'internal_dimensions', 'external_dimensions', 'liner_type', 'mikelman_treatment', 'stapled', 'pallet', 'playo', 'fleje', 'pieces_per_package', 'packaging_notes', 'periodicity', 'payment_terms', 'max_pallet_height', 'target_price', 'probability', 'opportunity_type', 'industry', 'product_measure', 'estimated_close_date', 'next_action']
     .forEach(name => { form.elements[name].value = client[name] ?? ''; });
   form.elements.use_company_location.checked = Boolean(client.company_location && client.company_location === client.delivery_address);
   syncCompanyDeliveryAddress(form, form.elements.use_company_location);
@@ -1332,14 +1344,17 @@ function openClientDraft(id) {
     deliveryAddress: 'delivery_address', deliveryConditions: 'delivery_conditions',
     quoteSpecifications: 'quote_specifications', flute: 'flute', inkCount: 'ink_count',
     internalDimensions: 'internal_dimensions', externalDimensions: 'external_dimensions',
-    sampleProvided: 'sample_provided', linerType: 'liner_type',
+    sampleProvided: 'sample_provided', stapled: 'stapled', linerType: 'liner_type',
     mikelmanTreatment: 'mikelman_treatment', pallet: 'pallet',
+    playo: 'playo', fleje: 'fleje', piecesPerPackage: 'pieces_per_package',
+    packagingNotes: 'packaging_notes',
     estimatedQuantity: 'estimated_quantity', periodicity: 'periodicity',
     paymentTerms: 'payment_terms', maxPalletHeight: 'max_pallet_height',
     targetPrice: 'target_price', boxType: 'box_type', drawingProvided: 'drawing_provided',
     opportunityType: 'opportunity_type', industry: 'industry', productMeasure: 'product_measure',
     value: 'value', probability: 'probability', estimatedCloseDate: 'estimated_close_date',
-    nextAction: 'next_action', callDate: 'call_date', callTime: 'call_time', pinnedNote: 'pinned_note'
+    nextAction: 'next_action', callDate: 'call_date', callTime: 'call_time', pinnedNote: 'pinned_note',
+    internalCode: 'internal_code'
   };
   Object.entries(fieldMap).forEach(([formName, clientName]) => {
     clientForm.elements[formName].value = client[clientName] ?? '';
@@ -1356,8 +1371,7 @@ function openClientDraft(id) {
   updateWeightedForecast();
   document.querySelector('#client-dialog h2').textContent = 'Continuar captura';
   document.querySelector('#client-dialog .eyebrow').textContent = 'Oportunidad en borrador';
-  // BLOQUEO TEMPORAL: siempre abrir en el paso 1 mientras Checklist/Pipeline estén en mejora.
-  showClientFormStep(0);
+  showClientFormStep(Math.min(2, Math.max(0, Number(client.capture_step || 1) - 1)));
   document.querySelector('#client-dialog').showModal();
 }
 document.querySelector('#edit-form').addEventListener('submit', async event => {
@@ -1366,7 +1380,7 @@ document.querySelector('#edit-form').addEventListener('submit', async event => {
   const payload = Object.fromEntries(form.entries());
   const id = payload.client_id;
   delete payload.client_id;
-  ['value', 'estimated_quantity', 'sample_provided', 'drawing_provided'].forEach(key => { payload[key] = Number(payload[key]); });
+  ['value', 'estimated_quantity', 'sample_provided', 'drawing_provided', 'stapled', 'pieces_per_package'].forEach(key => { payload[key] = Number(payload[key]); });
   if (currentUser.role !== 'admin') delete payload.owner_id;
   try {
     await api(`/api/clients/${id}/edit`, { method: 'PATCH', body: JSON.stringify(payload) });
@@ -1377,7 +1391,6 @@ document.querySelector('#edit-form').addEventListener('submit', async event => {
 document.querySelector('#edit-close').addEventListener('click', () => document.querySelector('#edit-dialog').close());
 document.querySelector('#edit-cancel').addEventListener('click', () => document.querySelector('#edit-dialog').close());
 
-// ---------- Filtros de fecha (Movimientos y Auditoría) ----------
 function rangeQuery(filters) { const p = new URLSearchParams(); if (filters.from) p.set('from', filters.from); if (filters.to) p.set('to', filters.to); return p.toString(); }
 function rangeControls(prefix, filters) {
   return `<div class="location-filters"><label>Desde<input id="${prefix}-from" type="date" value="${escapeHtml(filters.from)}"></label><label>Hasta<input id="${prefix}-to" type="date" value="${escapeHtml(filters.to)}"></label><button class="button button-quiet" id="${prefix}-clear" type="button">Limpiar</button></div>`;
@@ -1387,7 +1400,6 @@ function bindRange(prefix, filters, reload) {
   document.querySelector(`#${prefix}-clear`).addEventListener('click', () => { filters.from = ''; filters.to = ''; reload().catch(error => alert(error.message)); });
 }
 
-// ---------- Panel gerencial ----------
 async function showDashboard() {
   if (currentUser?.role !== 'admin') {
     await showAnalysis(false);
@@ -1451,7 +1463,6 @@ async function showDashboard() {
   await showAnalysis(true);
 }
 
-// ---------- Ubicaciones ----------
 function formatLocationStatus(location) {
   if (!location) return 'Todavía no hay una ubicación registrada.';
   return `Último registro ${escapeHtml(formatMovementTimestamp(location.updated_at))}${location.accuracy ? ` · precisión aproximada ${Math.round(location.accuracy)} m` : ''}`;
@@ -1526,7 +1537,6 @@ function captureLocationOnce() {
   }, { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
 }
 
-// El panel de ubicación es solo para vendedores y solo aparece en la vista Clientes.
 function applyRoleVisibility() {
   const isSeller = currentUser?.role === 'seller';
   document.querySelector('#seller-location-panel').hidden = !(isSeller && activeView === 'clients');
@@ -1551,7 +1561,6 @@ async function setupLocationPanel() {
   captureLocationOnce();
 }
 
-// ---------- Movimientos y auditoría ----------
 async function showMovements() {
   const data = await api('/api/movements?' + rangeQuery(movementFilters));
   const movementRows = data.movements.map(row => `<tr><td>${escapeHtml(formatMovementTimestamp(row.created_at))}</td><td><strong>${escapeHtml(row.company)}</strong><span class="table-subtext">${escapeHtml(row.user_name)}</span></td><td>${row.from_stage ? `${stageLabel(row.from_stage)} → ` : ''}${stageLabel(row.to_stage)}</td><td>${row.call_date && row.call_time ? formatCall(row.call_date, row.call_time) : 'Sin llamada programada'}</td><td>${row.note ? escapeHtml(row.note) : '<span class="table-subtext">Sin nota</span>'}</td></tr>`).join('');
@@ -1567,7 +1576,6 @@ async function showAudit() {
 }
 
 async function showUsers() {
-  // Esta pantalla es exclusiva del administrador: alta, restablecimiento y baja lógica.
   const data = await api('/api/admin/users');
   document.querySelector('#users-page').innerHTML = `<div class="page-heading"><div><p class="eyebrow">Administración / Equipo</p><h1>Usuarios</h1><p class="muted">Crea accesos, restablece contraseñas y desactiva vendedores.</p></div></div><div class="user-admin-grid"><section class="data-panel"><h2>Nuevo vendedor</h2><form id="new-user-form" class="admin-form"><label>Nombre completo<input name="name" required maxlength="80" placeholder="Ej. Luis Medina"></label><label>Usuario<input name="username" required maxlength="30" placeholder="luis.medina"></label><label>Contraseña inicial<input name="password" type="password" minlength="8" required placeholder="Mínimo 8 caracteres"></label><p id="user-form-message" class="form-error" hidden></p><button class="button button-primary" type="submit">Crear vendedor</button></form></section><section class="data-panel user-list"><h2>Accesos registrados</h2><div class="user-table">${data.users.map(item => `<div class="user-row ${item.active ? '' : 'user-inactive'}"><div><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.username)} · ${item.role === 'admin' ? 'Administrador' : 'Vendedor'} · ${item.active ? 'Activo' : 'Desactivado'}</span></div>${item.role === 'seller' && item.active ? `<div class="user-actions"><button class="button button-quiet reset-user" data-id="${item.id}" data-name="${escapeHtml(item.name)}">Restablecer</button><button class="button button-danger delete-user" data-id="${item.id}" data-name="${escapeHtml(item.name)}">Eliminar</button></div>` : ''}</div>`).join('')}</div></section></div>`;
   document.querySelector('#new-user-form').addEventListener('submit', async event => {
@@ -1587,15 +1595,14 @@ async function showUsers() {
   }));
 }
 
-// ---------- Navegación ----------
 async function showView(view) {
   if (view === 'analysis') view = 'dashboard';
   if (view === activeView) return;
   activeView = view;
   document.querySelectorAll('[data-page]').forEach(element => { element.hidden = element.dataset.page !== view; });
-  applyRoleVisibility(); // oculta el panel de ubicación al admin y fuera de Clientes
+  applyRoleVisibility();
   document.querySelectorAll('[data-view]').forEach(link => link.classList.toggle('active', link.dataset.view === view));
-  if (view === 'clients' || view === 'today') await loadClients(); // datos frescos; en "today" también dibuja la vista
+  if (view === 'clients' || view === 'today') await loadClients();
   if (view === 'dashboard') await showDashboard();
   if (view === 'appointments') await showAppointments();
   if (view === 'kpis') await showKpis();
@@ -1605,8 +1612,6 @@ async function showView(view) {
   if (view === 'users') await showUsers();
 }
 
-// La navegación se maneja sin recargar la página para conservar una experiencia
-// rápida incluso cuando la laptop funciona como servidor.
 document.querySelectorAll('[data-view]').forEach(link => link.addEventListener('click', async event => { event.preventDefault(); await showView(link.dataset.view); }));
 document.querySelector('#logout').addEventListener('click', async () => {
   await api('/api/logout', { method: 'POST' });
@@ -1617,9 +1622,6 @@ document.querySelector('#close-account').addEventListener('click', () => documen
 document.querySelector('#cancel-account').addEventListener('click', () => document.querySelector('#account-dialog').close());
 document.querySelector('#password-form').addEventListener('submit', async event => { event.preventDefault(); const form = new FormData(event.target); const message = document.querySelector('#password-message'); try { await api('/api/account/password', { method: 'PATCH', body: JSON.stringify({ current_password: form.get('current_password'), new_password: form.get('new_password') }) }); document.querySelector('#account-dialog').close(); event.target.reset(); window.alert('Contraseña actualizada correctamente.'); } catch (error) { message.textContent = error.message; message.hidden = false; } });
 
-// ---------- Sesión ----------
-// El login decide la vista y los permisos visibles, pero la seguridad real
-// siempre se valida otra vez en las rutas del servidor.
 async function startSession(user) {
   currentUser = user;
   document.querySelector('#login-screen').hidden = true;
@@ -1645,9 +1647,7 @@ document.querySelector('#login-form').addEventListener('submit', async event => 
   } catch (loginError) { error.textContent = loginError.message; error.hidden = false; }
 });
 
-// Si ya existe una sesión válida, el usuario entra directo al CRM después de
-// recargar; si no, el formulario de acceso permanece visible.
 (async function boot() {
   try { const session = await api('/api/session'); if (session.user) await startSession(session.user); }
-  catch { /* El formulario de acceso queda disponible. */ }
+  catch { }
 }());

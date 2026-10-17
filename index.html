@@ -9,7 +9,6 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 </head>
 <body>
-  <!-- Pantalla pública: no mostramos el CRM hasta que el servidor confirme la sesión. -->
   <section id="login-screen" class="login-screen">
     <div class="login-panel">
       <p class="eyebrow">Acceso seguro</p>
@@ -30,8 +29,7 @@
     </div>
     <div class="login-aside"><div class="login-brand"><span class="login-logo"><img src="grubox.png" alt="Grubox Corrugados"></span></div><strong class="login-aside-title">Control de ventas<br>y prospectos</strong></div>
   </section>
- 
-  <!-- Todo el contenido protegido vive dentro de este contenedor. -->
+
   <div id="app-shell" hidden>
   <header class="topbar">
     <a class="brand" href="index.html" aria-label="Grubox CRM, inicio">
@@ -51,9 +49,8 @@
     </nav>
     <div class="user-chip"><span class="status-dot"></span><span id="user-name"></span> <span id="user-role" class="role"></span><button id="account-button" class="account-button">Mi cuenta</button><button id="logout" class="logout-button" title="Cerrar sesión">Salir</button></div>
   </header>
- 
+
   <main class="shell">
-    <!-- Las secciones comparten espacio; JavaScript muestra solo la vista elegida. -->
     <section class="page-heading" data-page="clients">
       <div>
         <p class="eyebrow">Ventas / Seguimiento</p>
@@ -62,7 +59,7 @@
       </div>
       <time id="today" class="date-label"></time>
     </section>
- 
+
     <section class="toolbar" aria-label="Herramientas de clientes" data-page="clients">
       <label class="search-box"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Buscar empresa o contacto..." autocomplete="off"></label>
       <select id="stage-filter" aria-label="Filtrar por etapa">
@@ -90,16 +87,17 @@
       <div class="view-switch" role="group" aria-label="Vista de prospectos"><button class="view-switch-active" id="pipeline-view" type="button" aria-pressed="true">Tablero</button><button id="list-view" type="button" aria-pressed="false">Lista</button></div>
       <button class="button button-quiet" id="export-csv" type="button">⬇ Exportar CSV</button>
       <button class="button button-quiet" id="export-prospects-pdf" type="button">⬇ Imprimir / guardar PDF</button>
+      <button class="button button-quiet" id="import-excel" type="button">⬆ Importar Excel</button>
       <button class="button button-quiet" id="new-activity" type="button">＋ Registrar actividad</button>
       <button class="button button-quiet" id="new-appointment" type="button">＋ Nueva cita</button>
       <button class="button button-primary" id="new-client">＋ Nuevo prospecto</button>
     </section>
- 
+
     <section id="seller-location-panel" class="location-share" data-seller-only hidden data-page="clients">
       <div><p class="eyebrow">Ubicación de trabajo</p><h2>Registro de ubicación</h2><p id="location-status" class="muted">Al iniciar sesión se registrará una ubicación por sesión.</p></div>
       <div class="location-actions"><button id="start-location" class="button button-primary" type="button">Reintentar ubicación</button></div>
     </section>
- 
+
     <section class="summary" aria-label="Resumen" data-page="clients">
       <div><span>Oportunidades</span><strong id="total-count">0</strong></div>
       <div><span>Dinero ganado</span><strong id="won-value">$0</strong></div>
@@ -108,7 +106,7 @@
       <div><span>Pronóstico ponderado</span><strong id="forecast-value">$0</strong></div>
       <div><span>Tasa de cierre</span><strong id="win-rate">0%</strong></div>
     </section>
- 
+
     <section id="pipeline" class="pipeline" aria-label="Tablero de ventas" data-page="clients"></section>
     <p id="empty-state" class="empty-state" hidden data-page="clients">No encontramos prospectos con esos criterios.</p>
     <nav id="client-pagination" class="client-pagination" aria-label="Paginación de prospectos" data-page="clients">
@@ -126,37 +124,53 @@
     <div id="analysis-render-target" hidden></div>
     <p class="local-note"><span aria-hidden="true">●</span> Datos protegidos en la base de datos del sistema</p>
   </main>
- 
-  <!-- Alta de oportunidades organizada en tres etapas de captura. -->
+
   <dialog id="client-dialog">
     <form id="client-form" method="dialog">
       <div class="dialog-heading"><div><p class="eyebrow">Nueva oportunidad</p><h2>Agregar prospecto</h2><p id="client-step-caption" class="muted">Paso 1 de 3 · Datos de la empresa</p></div><button type="button" class="close-button" id="close-dialog" aria-label="Cerrar">×</button></div>
       <input name="clientId" type="hidden">
-      <div class="wizard-progress" aria-label="Progreso del formulario"><span class="wizard-step-active">1. Empresa</span><span>2. Checklist</span><span>3. Pipeline</span></div>
+      <div class="wizard-progress" aria-label="Progreso del formulario"><span class="wizard-step-active">1. Prospecto</span><span>2. Checklist</span><span>3. Embalaje</span></div>
       <section class="client-form-step" data-form-step="0">
-        <h3 class="form-section-title">Datos de la empresa y contacto</h3>
+        <h3 class="form-section-title">1. Prospecto</h3>
         <label>Nombre de la empresa / razón social<input name="company" maxlength="80" placeholder="Ej. Comercializadora del Centro"></label>
         <label>Persona de contacto<input name="contact" maxlength="60" placeholder="Nombre de contacto"></label>
         <div class="form-grid"><label>Medio de contacto<select name="preferredContact"><option value="">Sin especificar</option><option value="call">Llamada</option><option value="whatsapp">WhatsApp</option><option value="email">Correo electrónico</option><option value="visit">Visita</option><option value="facebook">Facebook</option><option value="linkedin">LinkedIn</option><option value="tiktok">TikTok</option><option value="instagram">Instagram</option></select></label><label>Teléfono de contacto<input name="contactPhone" type="tel" maxlength="25" placeholder="Teléfono o celular"></label></div>
         <div class="form-grid"><label>Correo de contacto<input name="email" type="email" maxlength="120" placeholder="contacto@empresa.com"></label><label>Número de la empresa<input name="companyPhone" type="tel" maxlength="25" placeholder="Teléfono general"></label></div>
         <label>Ubicación de la empresa<input name="companyLocation" maxlength="180" placeholder="Ciudad, estado o dirección"></label>
+        <label>Código interno<input name="internalCode" maxlength="40" placeholder="Ej. PROS-001"></label>
       </section>
       <section class="client-form-step" data-form-step="1" hidden>
-        <h3 class="form-section-title">Checklist para cotizar</h3>
+        <h3 class="form-section-title">2. Checklist</h3>
         <label class="inline-checkbox"><input name="useCompanyLocation" type="checkbox"> Usar la ubicación de la empresa como dirección de entrega</label>
         <label>Dirección de entrega<input name="deliveryAddress" maxlength="180"></label>
         <label>Condiciones y/o especificaciones de entrega<input name="deliveryConditions" maxlength="240" placeholder="Ej. Emplayado y entarimado"></label>
         <label>Especificaciones detalladas a cotizar<textarea name="quoteSpecifications" maxlength="1000" rows="3"></textarea></label>
-        <div class="form-grid"><label>Flauta<input name="flute" maxlength="40"></label><label>Número de tintas<input name="inkCount" type="number" min="0" step="1"></label></div>
-        <div class="form-grid"><label>Medidas internas<input name="internalDimensions" maxlength="100"></label><label>Medidas externas<input name="externalDimensions" maxlength="100"></label></div>
-        <div class="form-grid"><label>¿Muestra física?<select name="sampleProvided"><option value="">Sin especificar</option><option value="0">No</option><option value="1">Sí</option></select></label><label>Tipo de liner<input name="linerType" maxlength="80"></label></div>
-        <div class="form-grid"><label>Tratamiento Mikelman<select name="mikelmanTreatment"><option value="">Sin especificar</option><option value="0">No</option><option value="1">Sí</option></select></label><label>Tarima<input name="pallet" maxlength="80"></label></div>
-        <div class="form-grid"><label>Volumen / cantidad de piezas<input name="estimatedQuantity" type="number" min="1" step="1" placeholder="0"></label><label>Periodicidad<input name="periodicity" maxlength="60" placeholder="Ej. Mensual"></label></div>
-        <div class="form-grid"><label>Forma de pago<input name="paymentTerms" maxlength="80"></label><label>Altura máxima de tarima<input name="maxPalletHeight" maxlength="40" placeholder="Ej. 1.2 cm"></label></div>
-        <div class="form-grid"><label>Precio estimado por pieza (MXN)<input name="targetPrice" type="number" min="0.01" step="0.01" placeholder="0.00"></label><label>Tipo de caja / producto<input name="boxType" maxlength="100" placeholder="Ej. Caja troquelada"></label></div>
-        <label>¿El cliente entregó un plano?<select name="drawingProvided"><option value="">Sin especificar</option><option value="0">No</option><option value="1">Sí</option></select></label>
+        <div class="form-grid"><label>Flauta<input name="flute" maxlength="40" placeholder="Ej. B, C, E, BC"></label><label>Número de tintas<input name="inkCount" type="number" min="0" step="1"></label></div>
+        <div class="form-grid">
+          <label>Medidas internas (Largo x Ancho x Alto)<input name="internalDimensions" maxlength="100" placeholder="Ej. 40 x 30 x 25"></label>
+          <label>Medidas externas (Largo x Ancho x Alto)<input name="externalDimensions" maxlength="100" placeholder="Ej. 42 x 32 x 27"></label>
+        </div>
+        <div class="form-grid">
+          <label>¿Muestra física?<select name="sampleProvided"><option value="">Sin especificar</option><option value="0">No</option><option value="1">Sí</option></select></label>
+          <label>Lainer<select name="linerType"><option value="">Sin especificar</option><option value="Blanco interno">Blanco interno</option><option value="Craft">Craft</option><option value="Doble blanco">Doble blanco</option><option value="Doble craft">Doble craft</option></select></label>
+        </div>
+        <div class="form-grid">
+          <label>¿Engrapado?<select name="stapled"><option value="">Sin especificar</option><option value="0">No</option><option value="1">Sí</option></select></label>
+          <label>Tratamiento Mikelman<select name="mikelmanTreatment"><option value="">Sin especificar</option><option value="0">No</option><option value="1">Sí</option></select></label>
+        </div>
+        <div class="form-grid">
+          <label>¿El cliente entregó un plano?<select name="drawingProvided"><option value="">Sin especificar</option><option value="0">No</option><option value="1">Sí</option></select></label>
+          <label>Tipo de caja / producto<input name="boxType" maxlength="100" placeholder="Ej. Caja troquelada"></label>
+        </div>
+        <div class="form-grid"><label>Playo<input name="playo" maxlength="120" placeholder="Ej. Playo transparente 2 pulgadas"></label><label>Fleje<input name="fleje" maxlength="120" placeholder="Ej. Fleje plástico negro"></label></div>
+        <label>Pieza por paquete<input name="piecesPerPackage" type="number" min="0" step="1" placeholder="0"></label>
+        <label>Observaciones de embalaje<textarea name="packagingNotes" maxlength="500" rows="2" placeholder="Etiquetado, esquineros, etc."></textarea></label>
       </section>
       <section class="client-form-step" data-form-step="2" hidden>
+        <h3 class="form-section-title">3. Embalaje</h3>
+        <div class="form-grid"><label>Tarima<input name="pallet" maxlength="80" placeholder="Ej. Tarima de madera"></label><label>Altura máxima de tarima<input name="maxPalletHeight" maxlength="40" placeholder="Ej. 1.2 m"></label></div>
+        <div class="form-grid"><label>Volumen / cantidad de piezas<input name="estimatedQuantity" type="number" min="0" step="1" placeholder="0"></label><label>Periodicidad<input name="periodicity" maxlength="60" placeholder="Ej. Mensual"></label></div>
+        <div class="form-grid"><label>Forma de pago<input name="paymentTerms" maxlength="80"></label><label>Precio estimado por pieza (MXN)<input name="targetPrice" type="number" min="0" step="0.01" placeholder="0.00"></label></div>
         <h3 class="form-section-title">Pipeline comercial</h3>
         <label>Etapa de negociación<select name="stage" id="client-stage"><option value="new">Nuevo</option><option value="negotiation">En negociación</option><option value="quoted">Cotizado</option><option value="won">Ganado</option><option value="lost">Perdido</option></select></label>
         <label id="new-won-value-field" hidden>Importe real vendido (MXN)<input name="wonValue" type="number" min="0" step="1" placeholder="Importe confirmado del pedido"></label>
@@ -176,6 +190,17 @@
       <div class="dialog-actions wizard-actions"><button type="button" class="button button-quiet" id="cancel-dialog">Cancelar</button><button type="button" class="button button-quiet" id="client-step-back" hidden>Anterior</button><button type="button" class="button button-quiet" id="client-save-progress">Guardar avance</button><button type="button" class="button button-primary" id="client-step-next">Siguiente</button><button class="button button-primary" id="client-submit" type="button" hidden>Guardar oportunidad</button></div>
     </form>
   </dialog>
+
+  <dialog id="import-dialog">
+    <form id="import-form" method="dialog">
+      <div class="dialog-heading"><div><p class="eyebrow">Carga masiva</p><h2>Importar prospectos desde Excel</h2></div><button type="button" class="close-button" id="import-close" aria-label="Cerrar">×</button></div>
+      <p class="field-help">Solo se crean prospectos nuevos. Si una fila coincide con un prospecto existente (misma empresa + contacto), se omite. Las filas con errores se reportan al final.</p>
+      <label>Archivo Excel (.xlsx)<input id="import-file" name="file" type="file" accept=".xlsx" required></label>
+      <div class="dialog-actions"><button type="button" class="button button-quiet" id="import-cancel">Cancelar</button><button class="button button-primary" type="submit">Importar</button></div>
+      <div id="import-result" class="field-help" aria-live="polite"></div>
+    </form>
+  </dialog>
+
   <dialog id="appointment-dialog">
     <form id="appointment-form" method="dialog">
       <div class="dialog-heading"><div><p class="eyebrow">Agenda comercial</p><h2>Programar cita</h2></div><button type="button" class="close-button" id="appointment-close" aria-label="Cerrar">×</button></div>
@@ -269,31 +294,34 @@
     <form id="edit-form" method="dialog">
       <div class="dialog-heading"><div><p class="eyebrow">Ficha del prospecto</p><h2>Editar prospecto</h2></div><button type="button" class="close-button" id="edit-close" aria-label="Cerrar">×</button></div>
       <input name="client_id" type="hidden">
-      <h3 class="form-section-title">1. Datos de la empresa</h3>
+      <h3 class="form-section-title">1. Prospecto</h3>
       <label>Empresa<input name="company" required maxlength="80"></label>
       <label>Contacto<input name="contact" required maxlength="60"></label>
       <div class="form-grid"><label>Teléfono del prospecto<input name="contact_phone" type="tel" maxlength="25"></label><label>Correo electrónico<input name="email" type="email" maxlength="120"></label></div>
       <div class="form-grid"><label>Teléfono de la empresa<input name="company_phone" type="tel" maxlength="25"></label><label>Ubicación de la empresa<input name="company_location" maxlength="180"></label></div>
       <label>Medio de contacto<select name="preferred_contact"><option value="call">Llamada</option><option value="whatsapp">WhatsApp</option><option value="email">Correo electrónico</option><option value="visit">Visita</option><option value="facebook">Facebook</option><option value="linkedin">LinkedIn</option><option value="tiktok">TikTok</option><option value="instagram">Instagram</option></select></label>
       <label>Código interno<input name="internal_code" maxlength="40"></label>
-      <h3 class="form-section-title">2. Checklist para cotizar</h3>
+      <h3 class="form-section-title">2. Checklist</h3>
       <label class="inline-checkbox"><input name="use_company_location" type="checkbox"> Usar la ubicación de la empresa como dirección de entrega</label>
       <label>Dirección de entrega<input name="delivery_address" maxlength="180"></label>
       <label>Condiciones de entrega<input name="delivery_conditions" maxlength="240"></label>
       <label>Especificaciones detalladas<textarea name="quote_specifications" maxlength="1000" rows="3"></textarea></label>
       <div class="form-grid"><label>Flauta<input name="flute" maxlength="40"></label><label>Número de tintas<input name="ink_count" type="number" min="0" step="1"></label></div>
-      <div class="form-grid"><label>Medidas internas<input name="internal_dimensions" maxlength="100"></label><label>Medidas externas<input name="external_dimensions" maxlength="100"></label></div>
-      <div class="form-grid"><label>Tipo de liner<input name="liner_type" maxlength="80"></label><label>Tratamiento Mikelman<select name="mikelman_treatment"><option value="">Sin especificar</option><option value="0">No</option><option value="1">Sí</option></select></label></div>
-      <div class="form-grid"><label>Tarima<input name="pallet" maxlength="80"></label><label>Volumen / cantidad de piezas<input name="estimated_quantity" type="number" min="0" step="1" required></label></div>
-      <div class="form-grid"><label>Periodicidad<input name="periodicity" maxlength="60"></label><label>Forma de pago<input name="payment_terms" maxlength="80"></label></div>
-      <div class="form-grid"><label>Altura máxima de tarima<input name="max_pallet_height" maxlength="40"></label><label>Precio estimado por pieza (MXN)<input name="target_price" type="number" min="0" step="0.01"></label></div>
-      <label>Tipo de caja<input name="box_type" maxlength="100"></label>
-      <div class="form-grid"><label>¿Nos dio muestra física?<select name="sample_provided"><option value="0">No</option><option value="1">Sí</option></select></label><label>¿Nos dio plano?<select name="drawing_provided"><option value="0">No</option><option value="1">Sí</option></select></label></div>
-      <h3 class="form-section-title">3. Pipeline comercial</h3>
+      <div class="form-grid"><label>Medidas internas (Largo x Ancho x Alto)<input name="internal_dimensions" maxlength="100" placeholder="Ej. 40 x 30 x 25"></label><label>Medidas externas (Largo x Ancho x Alto)<input name="external_dimensions" maxlength="100" placeholder="Ej. 42 x 32 x 27"></label></div>
+      <div class="form-grid"><label>Lainer<select name="liner_type"><option value="">Sin especificar</option><option value="Blanco interno">Blanco interno</option><option value="Craft">Craft</option><option value="Doble blanco">Doble blanco</option><option value="Doble craft">Doble craft</option></select></label><label>Tratamiento Mikelman<select name="mikelman_treatment"><option value="">Sin especificar</option><option value="0">No</option><option value="1">Sí</option></select></label></div>
+      <div class="form-grid"><label>¿Engrapado?<select name="stapled"><option value="">Sin especificar</option><option value="0">No</option><option value="1">Sí</option></select></label><label>¿Nos dio muestra física?<select name="sample_provided"><option value="0">No</option><option value="1">Sí</option></select></label></div>
+      <div class="form-grid"><label>¿Nos dio plano?<select name="drawing_provided"><option value="0">No</option><option value="1">Sí</option></select></label><label>Tipo de caja<input name="box_type" maxlength="100"></label></div>
+      <div class="form-grid"><label>Playo<input name="playo" maxlength="120"></label><label>Fleje<input name="fleje" maxlength="120"></label></div>
+      <div class="form-grid"><label>Pieza por paquete<input name="pieces_per_package" type="number" min="0" step="1"></label><label>Observaciones de embalaje<textarea name="packaging_notes" maxlength="500" rows="2"></textarea></label></div>
+      <h3 class="form-section-title">3. Embalaje</h3>
+      <div class="form-grid"><label>Tarima<input name="pallet" maxlength="80"></label><label>Altura máxima de tarima<input name="max_pallet_height" maxlength="40"></label></div>
+      <div class="form-grid"><label>Volumen / cantidad de piezas<input name="estimated_quantity" type="number" min="0" step="1" required></label><label>Periodicidad<input name="periodicity" maxlength="60"></label></div>
+      <div class="form-grid"><label>Forma de pago<input name="payment_terms" maxlength="80"></label><label>Precio estimado por pieza (MXN)<input name="target_price" type="number" min="0" step="0.01"></label></div>
       <div class="form-grid"><label>Planta<input name="plant" maxlength="80"></label><label>Código MP<input name="material_code" maxlength="80"></label></div>
       <div class="form-grid"><label>OC<input name="purchase_order" maxlength="80"></label><label>Proveedor<input name="supplier" maxlength="100"></label></div>
       <div class="form-grid"><label>Piezas / Kg<input name="pieces_per_kg" type="number" min="0" step="0.001"></label><label>UM<input name="unit_of_measure" maxlength="30"></label></div>
       <label>Requerimiento planeado<input name="planned_requirement" maxlength="120"></label>
+      <h3 class="form-section-title">Pipeline comercial</h3>
       <div class="form-grid"><label>Valor estimado de oportunidad (MXN)<input name="value" type="number" min="0" step="1" required readonly></label><label>Probabilidad (%)<input name="probability" type="number" min="0" max="100" step="1"></label></div>
       <label>Forecast ponderado (MXN)<input name="weighted_forecast" type="number" readonly></label>
       <div class="form-grid"><label>Tipo de oportunidad<input name="opportunity_type" maxlength="80"></label><label>Industria / sector del cliente<input name="industry" maxlength="80"></label></div>
@@ -307,7 +335,6 @@
       <div class="dialog-actions"><button type="button" class="button button-quiet" id="edit-cancel">Cancelar</button><button class="button button-primary" type="submit">Guardar cambios</button></div>
     </form>
   </dialog>
-  <!-- Cada usuario puede actualizar su propia contraseña desde aquí. -->
   <dialog id="account-dialog">
     <form id="password-form" method="dialog">
       <div class="dialog-heading"><div><p class="eyebrow">Seguridad</p><h2>Cambiar contraseña</h2></div><button type="button" class="close-button" id="close-account" aria-label="Cerrar">×</button></div>
@@ -331,4 +358,3 @@
   <script src="app.js"></script>
 </body>
 </html>
- 
