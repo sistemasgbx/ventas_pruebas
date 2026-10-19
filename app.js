@@ -235,7 +235,6 @@ function renderCard(client) {
   const contactData = [client.contact_phone, client.email, client.company_phone].filter(Boolean).map(escapeHtml).join(' · ');
   const contactLabels = { call: 'Llamada', whatsapp: 'WhatsApp', email: 'Correo electrónico', visit: 'Visita', facebook: 'Facebook', linkedin: 'LinkedIn', tiktok: 'TikTok', instagram: 'Instagram' };
   const prospectDetails = [
-    client.internal_code ? `Código: ${client.internal_code}` : '',
     client.preferred_contact ? `Contacto: ${contactLabels[client.preferred_contact] || client.preferred_contact}` : '',
     client.company_location ? `Ubicación: ${client.company_location}` : '',
     client.sample_provided === null || client.sample_provided === undefined ? '' : `Muestra: ${Number(client.sample_provided) ? 'Recibida' : 'No recibida'}`,
@@ -305,8 +304,7 @@ function renderCaptureSummary(client) {
       fields: [
         ['Empresa', 'company'], ['Contacto', 'contact'], ['Medio de contacto', 'preferred_contact', value => contactLabels[value] || value],
         ['Teléfono de contacto', 'contact_phone'], ['Correo', 'email'],
-        ['Teléfono de empresa', 'company_phone'], ['Ubicación de empresa', 'company_location'],
-        ['Código interno', 'internal_code']
+        ['Teléfono de empresa', 'company_phone'], ['Ubicación de empresa', 'company_location']
       ]
     },
     {
@@ -752,8 +750,7 @@ const prospectPrintFields = [
     fields: [
       ['Empresa', 'company'], ['Persona de contacto', 'contact'], ['Medio de contacto', 'preferred_contact'],
       ['Teléfono de contacto', 'contact_phone'], ['Correo de contacto', 'email'],
-      ['Teléfono de la empresa', 'company_phone'], ['Ubicación de la empresa', 'company_location'],
-      ['Código interno', 'internal_code']
+      ['Teléfono de la empresa', 'company_phone'], ['Ubicación de la empresa', 'company_location']
     ]
   },
   {
@@ -1016,8 +1013,7 @@ function clientFormPayload(complete, advance = false) {
     max_pallet_height: form.get('maxPalletHeight'), target_price: optionalNumber('targetPrice'),
     opportunity_type: form.get('opportunityType'), industry: form.get('industry'),
     product_measure: productMeasureDifferent.value === '1' ? form.get('productMeasure') : form.get('boxType'), probability: Number(form.get('probability') || 0),
-    estimated_close_date: form.get('estimatedCloseDate'), pinned_note: form.get('pinnedNote'),
-    internal_code: form.get('internalCode')
+    estimated_close_date: form.get('estimatedCloseDate'), pinned_note: form.get('pinnedNote')
   };
 }
 async function saveClientProgress(complete, advance = false) {
@@ -1276,7 +1272,7 @@ async function openEditDialog(id) {
   if (!client) return;
   const form = document.querySelector('#edit-form');
   form.elements.client_id.value = client.id;
-  ['company', 'contact', 'contact_phone', 'email', 'company_phone', 'company_location', 'internal_code', 'value', 'weighted_forecast', 'estimated_quantity', 'box_type', 'preferred_contact', 'requested_delivery_date', 'expected_delivery_date', 'pinned_note', 'plant', 'material_code', 'purchase_order', 'pieces_per_kg', 'unit_of_measure', 'planned_requirement', 'supplier', 'delivery_address', 'delivery_conditions', 'quote_specifications', 'flute', 'ink_count', 'internal_dimensions', 'external_dimensions', 'liner_type', 'mikelman_treatment', 'stapled', 'pallet', 'playo', 'fleje', 'pieces_per_package', 'packaging_notes', 'periodicity', 'payment_terms', 'max_pallet_height', 'target_price', 'probability', 'opportunity_type', 'industry', 'product_measure', 'estimated_close_date', 'next_action']
+  ['company', 'contact', 'contact_phone', 'email', 'company_phone', 'company_location', 'value', 'weighted_forecast', 'estimated_quantity', 'box_type', 'preferred_contact', 'requested_delivery_date', 'expected_delivery_date', 'pinned_note', 'plant', 'material_code', 'purchase_order', 'pieces_per_kg', 'unit_of_measure', 'planned_requirement', 'supplier', 'delivery_address', 'delivery_conditions', 'quote_specifications', 'flute', 'ink_count', 'internal_dimensions', 'external_dimensions', 'liner_type', 'mikelman_treatment', 'stapled', 'pallet', 'playo', 'fleje', 'pieces_per_package', 'packaging_notes', 'periodicity', 'payment_terms', 'max_pallet_height', 'target_price', 'probability', 'opportunity_type', 'industry', 'product_measure', 'estimated_close_date', 'next_action']
     .forEach(name => { form.elements[name].value = client[name] ?? ''; });
   form.elements.use_company_location.checked = Boolean(client.company_location && client.company_location === client.delivery_address);
   syncCompanyDeliveryAddress(form, form.elements.use_company_location);
@@ -1353,8 +1349,7 @@ function openClientDraft(id) {
     targetPrice: 'target_price', boxType: 'box_type', drawingProvided: 'drawing_provided',
     opportunityType: 'opportunity_type', industry: 'industry', productMeasure: 'product_measure',
     value: 'value', probability: 'probability', estimatedCloseDate: 'estimated_close_date',
-    nextAction: 'next_action', callDate: 'call_date', callTime: 'call_time', pinnedNote: 'pinned_note',
-    internalCode: 'internal_code'
+    nextAction: 'next_action', callDate: 'call_date', callTime: 'call_time', pinnedNote: 'pinned_note'
   };
   Object.entries(fieldMap).forEach(([formName, clientName]) => {
     clientForm.elements[formName].value = client[clientName] ?? '';
