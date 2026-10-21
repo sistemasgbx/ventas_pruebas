@@ -319,9 +319,9 @@ function renderCaptureSummary(client) {
         ['Engrapado', 'stapled', value => Number(value) ? 'Sí' : 'No'],
         ['Plano', 'drawing_provided', value => Number(value) ? 'Sí' : 'No'],
         ['Tipo de caja / producto', 'box_type'],
-        ['Playo', 'playo'], ['Fleje', 'fleje'],
-        ['Pieza por paquete', 'pieces_per_package', value => Number(value).toLocaleString('es-MX')],
-        ['Observaciones de embalaje', 'packaging_notes']
+        ['Volumen / piezas', 'estimated_quantity', value => Number(value).toLocaleString('es-MX')],
+        ['Periodicidad', 'periodicity'], ['Forma de pago', 'payment_terms'],
+        ['Precio estimado por pieza', 'target_price', value => money.format(value)]
       ]
     },
     {
@@ -329,9 +329,9 @@ function renderCaptureSummary(client) {
       complete: completed,
       fields: [
         ['Tarima', 'pallet'], ['Altura máxima de tarima', 'max_pallet_height'],
-        ['Volumen / piezas', 'estimated_quantity', value => Number(value).toLocaleString('es-MX')],
-        ['Periodicidad', 'periodicity'], ['Forma de pago', 'payment_terms'],
-        ['Precio estimado por pieza', 'target_price', value => money.format(value)],
+        ['Playo', 'playo'], ['Fleje', 'fleje'],
+        ['Pieza por paquete', 'pieces_per_package', value => Number(value).toLocaleString('es-MX')],
+        ['Observaciones de embalaje', 'packaging_notes'],
         ['Etapa', 'stage', value => stageLabel(value)], ['Tipo de oportunidad', 'opportunity_type'],
         ['Industria / sector', 'industry'], ['Producto / medida', 'product_measure'],
         ['Valor estimado', 'value', value => money.format(value)],
@@ -719,12 +719,12 @@ async function exportCsv() {
     ['internal_dimensions', 'Medidas internas'], ['external_dimensions', 'Medidas externas'],
     ['sample_provided', 'Muestra física'], ['stapled', 'Engrapado'], ['liner_type', 'Liner'],
     ['mikelman_treatment', 'Tratamiento Mikelman'],
+    ['estimated_quantity', 'Volumen / cantidad de piezas'], ['periodicity', 'Periodicidad'],
+    ['payment_terms', 'Forma de pago'], ['target_price', 'Precio estimado por pieza'],
+    ['pallet', 'Tarima'], ['max_pallet_height', 'Altura máxima de tarima'],
     ['playo', 'Playo'], ['fleje', 'Fleje'], ['pieces_per_package', 'Pieza por paquete'],
     ['packaging_notes', 'Observaciones de embalaje'],
-    ['pallet', 'Tarima'], ['max_pallet_height', 'Altura máxima de tarima'],
-    ['estimated_quantity', 'Volumen / cantidad de piezas'], ['periodicity', 'Periodicidad'],
-    ['payment_terms', 'Forma de pago'],
-    ['target_price', 'Precio estimado por pieza'], ['plant', 'Planta'], ['material_code', 'Código MP'],
+    ['plant', 'Planta'], ['material_code', 'Código MP'],
     ['purchase_order', 'OC'], ['pieces_per_kg', 'Piezas / Kg'], ['unit_of_measure', 'UM'],
     ['planned_requirement', 'Requerimiento planeado'], ['supplier', 'Proveedor'],
     ['won_value', 'Importe vendido'], ['lost_reason', 'Motivo de pérdida'], ['call_date', 'Próximo contacto']
@@ -762,16 +762,17 @@ const prospectPrintFields = [
       ['Medidas externas', 'external_dimensions'], ['Muestra física', 'sample_provided'],
       ['Engrapado', 'stapled'], ['Lainer', 'liner_type'], ['Tratamiento Mikelman', 'mikelman_treatment'],
       ['Plano recibido', 'drawing_provided'], ['Tipo de caja / producto', 'box_type'],
-      ['Playo', 'playo'], ['Fleje', 'fleje'], ['Pieza por paquete', 'pieces_per_package'],
-      ['Observaciones de embalaje', 'packaging_notes']
+      ['Volumen / cantidad de piezas', 'estimated_quantity'], ['Periodicidad', 'periodicity'],
+      ['Forma de pago', 'payment_terms'], ['Precio estimado por pieza', 'target_price']
     ]
   },
   {
     title: '3. Embalaje',
     fields: [
       ['Tarima', 'pallet'], ['Altura máxima de tarima', 'max_pallet_height'],
-      ['Volumen / cantidad de piezas', 'estimated_quantity'], ['Periodicidad', 'periodicity'],
-      ['Forma de pago', 'payment_terms'], ['Precio estimado por pieza', 'target_price'],
+      ['Playo', 'playo'], ['Fleje', 'fleje'],
+      ['Pieza por paquete', 'pieces_per_package'],
+      ['Observaciones de embalaje', 'packaging_notes'],
       ['Fecha de entrega solicitada', 'requested_delivery_date'],
       ['Fecha de entrega prevista', 'expected_delivery_date'],
       ['Planta', 'plant'], ['Código MP', 'material_code'], ['Orden de compra', 'purchase_order'],

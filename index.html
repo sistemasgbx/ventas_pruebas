@@ -161,15 +161,15 @@
           <label>¿El cliente entregó un plano?<select name="drawingProvided"><option value="">Sin especificar</option><option value="0">No</option><option value="1">Sí</option></select></label>
           <label>Tipo de caja / producto<input name="boxType" maxlength="100" placeholder="Ej. Caja troquelada"></label>
         </div>
-        <div class="form-grid"><label>Playo<input name="playo" maxlength="120" placeholder="Ej. Playo transparente 2 pulgadas"></label><label>Fleje<input name="fleje" maxlength="120" placeholder="Ej. Fleje plástico negro"></label></div>
-        <label>Pieza por paquete<input name="piecesPerPackage" type="number" min="0" step="1" placeholder="0"></label>
-        <label>Observaciones de embalaje<textarea name="packagingNotes" maxlength="500" rows="2" placeholder="Etiquetado, esquineros, etc."></textarea></label>
+        <div class="form-grid"><label>Volumen / cantidad de piezas<input name="estimatedQuantity" type="number" min="0" step="1" placeholder="0"></label><label>Periodicidad<input name="periodicity" maxlength="60" placeholder="Ej. Mensual"></label></div>
+        <div class="form-grid"><label>Forma de pago<input name="paymentTerms" maxlength="80"></label><label>Precio estimado por pieza (MXN)<input name="targetPrice" type="number" min="0" step="0.01" placeholder="0.00"></label></div>
       </section>
       <section class="client-form-step" data-form-step="2" hidden>
         <h3 class="form-section-title">3. Embalaje</h3>
         <div class="form-grid"><label>Tarima<input name="pallet" maxlength="80" placeholder="Ej. Tarima de madera"></label><label>Altura máxima de tarima<input name="maxPalletHeight" maxlength="40" placeholder="Ej. 1.2 m"></label></div>
-        <div class="form-grid"><label>Volumen / cantidad de piezas<input name="estimatedQuantity" type="number" min="0" step="1" placeholder="0"></label><label>Periodicidad<input name="periodicity" maxlength="60" placeholder="Ej. Mensual"></label></div>
-        <div class="form-grid"><label>Forma de pago<input name="paymentTerms" maxlength="80"></label><label>Precio estimado por pieza (MXN)<input name="targetPrice" type="number" min="0" step="0.01" placeholder="0.00"></label></div>
+        <div class="form-grid"><label>Playo<input name="playo" maxlength="120" placeholder="Ej. Playo transparente 2 pulgadas"></label><label>Fleje<input name="fleje" maxlength="120" placeholder="Ej. Fleje plástico negro"></label></div>
+        <label>Pieza por paquete<input name="piecesPerPackage" type="number" min="0" step="1" placeholder="0"></label>
+        <label>Observaciones de embalaje<textarea name="packagingNotes" maxlength="500" rows="2" placeholder="Etiquetado, esquineros, etc."></textarea></label>
         <h3 class="form-section-title">Pipeline comercial</h3>
         <label>Etapa de negociación<select name="stage" id="client-stage"><option value="new">Nuevo</option><option value="negotiation">En negociación</option><option value="quoted">Cotizado</option><option value="won">Ganado</option><option value="lost">Perdido</option></select></label>
         <label id="new-won-value-field" hidden>Importe real vendido (MXN)<input name="wonValue" type="number" min="0" step="1" placeholder="Importe confirmado del pedido"></label>
@@ -309,12 +309,12 @@
       <div class="form-grid"><label>Lainer<select name="liner_type"><option value="">Sin especificar</option><option value="Blanco interno">Blanco interno</option><option value="Craft">Craft</option><option value="Doble blanco">Doble blanco</option><option value="Doble craft">Doble craft</option></select></label><label>Tratamiento Mikelman<select name="mikelman_treatment"><option value="">Sin especificar</option><option value="0">No</option><option value="1">Sí</option></select></label></div>
       <div class="form-grid"><label>¿Engrapado?<select name="stapled"><option value="">Sin especificar</option><option value="0">No</option><option value="1">Sí</option></select></label><label>¿Nos dio muestra física?<select name="sample_provided"><option value="0">No</option><option value="1">Sí</option></select></label></div>
       <div class="form-grid"><label>¿Nos dio plano?<select name="drawing_provided"><option value="0">No</option><option value="1">Sí</option></select></label><label>Tipo de caja<input name="box_type" maxlength="100"></label></div>
-      <div class="form-grid"><label>Playo<input name="playo" maxlength="120"></label><label>Fleje<input name="fleje" maxlength="120"></label></div>
-      <div class="form-grid"><label>Pieza por paquete<input name="pieces_per_package" type="number" min="0" step="1"></label><label>Observaciones de embalaje<textarea name="packaging_notes" maxlength="500" rows="2"></textarea></label></div>
-      <h3 class="form-section-title">3. Embalaje</h3>
-      <div class="form-grid"><label>Tarima<input name="pallet" maxlength="80"></label><label>Altura máxima de tarima<input name="max_pallet_height" maxlength="40"></label></div>
       <div class="form-grid"><label>Volumen / cantidad de piezas<input name="estimated_quantity" type="number" min="0" step="1" required></label><label>Periodicidad<input name="periodicity" maxlength="60"></label></div>
       <div class="form-grid"><label>Forma de pago<input name="payment_terms" maxlength="80"></label><label>Precio estimado por pieza (MXN)<input name="target_price" type="number" min="0" step="0.01"></label></div>
+      <h3 class="form-section-title">3. Embalaje</h3>
+      <div class="form-grid"><label>Tarima<input name="pallet" maxlength="80"></label><label>Altura máxima de tarima<input name="max_pallet_height" maxlength="40"></label></div>
+      <div class="form-grid"><label>Playo<input name="playo" maxlength="120"></label><label>Fleje<input name="fleje" maxlength="120"></label></div>
+      <div class="form-grid"><label>Pieza por paquete<input name="pieces_per_package" type="number" min="0" step="1"></label><label>Observaciones de embalaje<textarea name="packaging_notes" maxlength="500" rows="2"></textarea></label></div>
       <div class="form-grid"><label>Planta<input name="plant" maxlength="80"></label><label>Código MP<input name="material_code" maxlength="80"></label></div>
       <div class="form-grid"><label>OC<input name="purchase_order" maxlength="80"></label><label>Proveedor<input name="supplier" maxlength="100"></label></div>
       <div class="form-grid"><label>Piezas / Kg<input name="pieces_per_kg" type="number" min="0" step="0.001"></label><label>UM<input name="unit_of_measure" maxlength="30"></label></div>
